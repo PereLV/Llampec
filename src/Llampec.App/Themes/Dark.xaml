@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    mc:Ignorable="po">
+  <!-- Windows 11 dark palette (WinUI "Common" colour tokens). Only the ones Llampec uses. -->
+
+  <!-- Text -->
+  <SolidColorBrush x:Key="TextFillPrimaryBrush" Color="#FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="TextFillSecondaryBrush" Color="#C5FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="TextFillDisabledBrush" Color="#5DFFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="TextOnAccentFillPrimaryBrush" Color="#000000" po:Freeze="True" />
+
+  <!-- Control fills (tiles in the "off" state) -->
+  <SolidColorBrush x:Key="ControlFillDefaultBrush" Color="#0FFFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlFillSecondaryBrush" Color="#15FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlFillTertiaryBrush" Color="#08FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlFillDisabledBrush" Color="#0BFFFFFF" po:Freeze="True" />
+
+  <SolidColorBrush x:Key="TileHoverOverlayBrush" Color="#12FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="TilePressedOverlayBrush" Color="#0AFFFFFF" po:Freeze="True" />
+
+  <!-- Strokes -->
+  <SolidColorBrush x:Key="ControlStrokeDefaultBrush" Color="#12FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlStrokeSecondaryBrush" Color="#18FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="DividerStrokeBrush" Color="#15FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#66757575" po:Freeze="True" />
+
+  <!-- Surfaces (used when the DWM backdrop is unavailable, e.g. transparency effects disabled) -->
+  <SolidColorBrush x:Key="SolidBackgroundFillBaseBrush" Color="#202020" po:Freeze="True" />
+  <SolidColorBrush x:Key="LayerFillBrush" Color="#0DFFFFFF" po:Freeze="True" />
+
+  <!-- Menu -->
+  <SolidColorBrush x:Key="MenuFlyoutBackgroundBrush" Color="#2C2C2C" po:Freeze="True" />
+  <SolidColorBrush x:Key="MenuFlyoutItemHoverBrush" Color="#0FFFFFFF" po:Freeze="True" />
+
+  <!-- Accent brushes are overwritten at run time by ThemeManager with the real system accent. -->
+  <SolidColorBrush x:Key="AccentFillBrush" Color="#60CDFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="AccentFillSecondaryBrush" Color="#E660CDFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="AccentFillTertiaryBrush" Color="#CC60CDFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="AccentTextBrush" Color="#99EBFF" po:Freeze="True" />
+
+</ResourceDictionary>

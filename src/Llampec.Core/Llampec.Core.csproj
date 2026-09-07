@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Llampec.Core: all the logic (actions, Win32 interop, settings). No UI framework references,
+       so it can be reused by other front ends (e.g. a PowerToys Command Palette extension). -->
+  <PropertyGroup>
+    <RootNamespace>Llampec</RootNamespace>
+    <AssemblyName>Llampec.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.Runtime.InteropServices" />
+  </ItemGroup>
+
+</Project>

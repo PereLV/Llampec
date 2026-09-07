@@ -1,0 +1,108 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- Theme-independent resources: fonts, metrics, control templates. Colours come from Light/Dark.xaml. -->
+
+  <FontFamily x:Key="BodyFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+  <!-- Metrics mirror the Windows 11 Quick Settings flyout (device-independent pixels). -->
+  <sys:Double x:Key="FlyoutWidth">360</sys:Double>
+  <Thickness x:Key="FlyoutPadding">22,24,22,24</Thickness>
+  <sys:Double x:Key="TileWidth">96</sys:Double>
+  <sys:Double x:Key="TileHeight">48</sys:Double>
+  <CornerRadius x:Key="TileCornerRadius">4</CornerRadius>
+  <CornerRadius x:Key="FlyoutCornerRadius">8</CornerRadius>
+
+  <!-- A focusable, keyboard-friendly button with no chrome of its own; tiles supply their own visuals. -->
+  <Style x:Key="ChromelessButton" TargetType="ButtonBase">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ButtonBase">
+          <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="{StaticResource TileCornerRadius}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource TextFillPrimaryBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Tray context menu in the Windows 11 flyout style. -->
+  <Style TargetType="ContextMenu">
+    <Setter Property="OverridesDefaultStyle" Value="True" />
+    <Setter Property="HasDropShadow" Value="True" />
+    <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContextMenu">
+          <Border Margin="8" Padding="4"
+                  Background="{DynamicResource MenuFlyoutBackgroundBrush}"
+                  BorderBrush="{DynamicResource SurfaceStrokeBrush}" BorderThickness="1"
+                  CornerRadius="8" SnapsToDevicePixels="True">
+            <Border.Effect>
+              <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.28" />
+            </Border.Effect>
+            <StackPanel IsItemsHost="True" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="MenuItem">
+    <Setter Property="OverridesDefaultStyle" Value="True" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillPrimaryBrush}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="MenuItem">
+          <Border x:Name="Root" Height="34" Padding="10,0" CornerRadius="4" Background="Transparent" MinWidth="180">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock x:Name="Check" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                         VerticalAlignment="Center" Visibility="Hidden" />
+              <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" Margin="4,0,0,0" />
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuFlyoutItemHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource TextFillDisabledBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+    <Setter Property="OverridesDefaultStyle" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Separator">
+          <Rectangle Height="1" Margin="4,3" Fill="{DynamicResource DividerStrokeBrush}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

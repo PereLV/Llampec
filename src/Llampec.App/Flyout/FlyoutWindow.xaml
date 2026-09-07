@@ -1,0 +1,161 @@
+<Window x:Class="Llampec.Flyout.FlyoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Llampec.Flyout"
+        xmlns:vm="clr-namespace:Llampec.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:FlyoutViewModel}"
+        Title="Llampec"
+        Width="{StaticResource FlyoutWidth}" SizeToContent="Height"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        ShowActivated="True" Background="Transparent"
+        FontFamily="{StaticResource BodyFont}"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <!-- Borderless window whose client area is the whole surface; DWM paints the acrylic backdrop and
+       rounded corners behind the transparent background. -->
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="-1" ResizeBorderThickness="0" UseAeroCaptionButtons="False" />
+  </WindowChrome.WindowChrome>
+
+  <Window.Resources>
+    <DataTemplate x:Key="TileTemplate" DataType="{x:Type vm:TileViewModel}">
+      <local:TileView Margin="0,0,12,24" />
+    </DataTemplate>
+
+    <!-- Sub-page row: glyph, title, and a Windows-11-style toggle switch. -->
+    <DataTemplate x:Key="SubTileTemplate" DataType="{x:Type vm:TileViewModel}">
+      <Button Style="{StaticResource ChromelessButton}" Command="{Binding ToggleCommand}" Height="44"
+              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+              AutomationProperties.Name="{Binding Title}" IsEnabled="{Binding IsAvailable}">
+        <Grid Margin="8,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="32" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <!-- Row hover highlight -->
+          <Border Grid.ColumnSpan="3" Margin="-8,2" CornerRadius="4" IsHitTestVisible="False">
+            <Border.Style>
+              <Style TargetType="Border">
+                <Setter Property="Background" Value="Transparent" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource TileHoverOverlayBrush}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsPressed, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource TilePressedOverlayBrush}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Border.Style>
+          </Border>
+          <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}" FontSize="16" VerticalAlignment="Center"
+                     Foreground="{DynamicResource TextFillPrimaryBrush}" />
+          <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="14" VerticalAlignment="Center"
+                     Foreground="{DynamicResource TextFillPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+          <!-- Toggle switch -->
+          <Border Grid.Column="2" Width="40" Height="20" CornerRadius="10" BorderThickness="1" VerticalAlignment="Center">
+            <Border.Style>
+              <Style TargetType="Border">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{DynamicResource TextFillSecondaryBrush}" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsOn}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentFillBrush}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Border.Style>
+            <Ellipse VerticalAlignment="Center">
+              <Ellipse.Style>
+                <Style TargetType="Ellipse">
+                  <Setter Property="Width" Value="12" />
+                  <Setter Property="Height" Value="12" />
+                  <Setter Property="HorizontalAlignment" Value="Left" />
+                  <Setter Property="Margin" Value="3,0,0,0" />
+                  <Setter Property="Fill" Value="{DynamicResource TextFillSecondaryBrush}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsOn}" Value="True">
+                      <Setter Property="HorizontalAlignment" Value="Right" />
+                      <Setter Property="Margin" Value="0,0,3,0" />
+                      <Setter Property="Fill" Value="{DynamicResource TextOnAccentFillPrimaryBrush}" />
+                    </DataTrigger>
+                    <!-- The knob grows on hover, as in WinUI's ToggleSwitch -->
+                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+                      <Setter Property="Width" Value="14" />
+                      <Setter Property="Height" Value="14" />
+                      <Setter Property="Margin" Value="2,0,2,0" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Ellipse.Style>
+            </Ellipse>
+          </Border>
+        </Grid>
+      </Button>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Border x:Name="Root" CornerRadius="{StaticResource FlyoutCornerRadius}" Padding="{StaticResource FlyoutPadding}"
+          BorderThickness="1" BorderBrush="{DynamicResource SurfaceStrokeBrush}">
+    <Border.Style>
+      <Style TargetType="Border">
+        <!-- Transparent when DWM draws acrylic behind us; solid fallback set from code when it cannot. -->
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+    </Border.Style>
+
+    <Grid>
+      <!-- Main page: tile grid -->
+      <ItemsControl x:Name="TileGrid" ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource TileTemplate}"
+                    Margin="0,0,-12,-24" Focusable="False" KeyboardNavigation.TabNavigation="Cycle">
+        <ItemsControl.Style>
+          <Style TargetType="ItemsControl">
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding IsSubpageOpen}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </ItemsControl.Style>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+
+      <!-- Sub-page: back header + rows -->
+      <StackPanel x:Name="SubpagePanel" DataContext="{Binding Subpage}">
+        <StackPanel.Style>
+          <Style TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding DataContext.IsSubpageOpen, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                <Setter Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </StackPanel.Style>
+        <Grid Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Style="{StaticResource ChromelessButton}" Width="32" Height="32"
+                  Command="{Binding DataContext.BackCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                  AutomationProperties.Name="Back">
+            <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{DynamicResource TextFillPrimaryBrush}" />
+          </Button>
+          <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"
+                     Foreground="{DynamicResource TextFillPrimaryBrush}" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding SubTiles}" ItemTemplate="{StaticResource SubTileTemplate}" Focusable="False" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>

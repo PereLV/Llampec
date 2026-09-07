@@ -1,0 +1,171 @@
+<UserControl x:Class="Llampec.Flyout.TileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Llampec.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:TileViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Width="{StaticResource TileWidth}">
+  <UserControl.Resources>
+    <!-- Tile face colours by state. Off: subtle fill; On: accent; hover/pressed: secondary/tertiary variants. -->
+    <Style x:Key="TileFace" TargetType="Border">
+      <Setter Property="Background" Value="{DynamicResource ControlFillDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource TileCornerRadius}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsOn}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource AccentFillBrush}" />
+          <Setter Property="BorderBrush" Value="Transparent" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsMixed}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource AccentFillTertiaryBrush}" />
+          <Setter Property="BorderBrush" Value="Transparent" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+          <Setter Property="Background" Value="{DynamicResource ControlFillDisabledBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <Style x:Key="TileGlyph" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillPrimaryBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsOn}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillPrimaryBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsMixed}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillPrimaryBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+          <Setter Property="Foreground" Value="{DynamicResource TextFillDisabledBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Hover / pressed overlays, drawn on top of the face so they work for both accent and neutral tiles. -->
+    <!-- Neutral tiles use the theme overlay (darker in light theme, lighter in dark theme);
+         accent (on/mixed) tiles always darken, like the native panel. -->
+    <Style x:Key="HoverOverlay" TargetType="Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="{StaticResource TileCornerRadius}" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource TileHoverOverlayBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsPressed, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource TilePressedOverlayBrush}" />
+        </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True" />
+            <Condition Binding="{Binding IsOn}" Value="True" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="Background" Value="#1A000000" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True" />
+            <Condition Binding="{Binding IsMixed}" Value="True" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="Background" Value="#1A000000" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True" />
+            <Condition Binding="{Binding IsOn}" Value="True" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="Background" Value="#33000000" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True" />
+            <Condition Binding="{Binding IsMixed}" Value="True" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="Background" Value="#33000000" />
+        </MultiDataTrigger>
+      </Style.Triggers>
+    </Style>
+  </UserControl.Resources>
+
+  <StackPanel>
+    <Grid Height="{StaticResource TileHeight}">
+      <Grid.Style>
+        <Style TargetType="Grid">
+          <Setter Property="IsEnabled" Value="{Binding IsAvailable}" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsBusy}" Value="True">
+              <Setter Property="Opacity" Value="0.6" />
+              <Setter Property="IsEnabled" Value="False" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Grid.Style>
+
+      <Border Style="{StaticResource TileFace}" />
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition x:Name="ChevronColumn" Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Primary (toggle / button) -->
+        <Button Style="{StaticResource ChromelessButton}" Command="{Binding ToggleCommand}"
+                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                AutomationProperties.Name="{Binding Title}">
+          <Grid>
+            <Border Style="{StaticResource HoverOverlay}" />
+            <TextBlock Style="{StaticResource TileGlyph}" Text="{Binding Glyph}" />
+          </Grid>
+        </Button>
+
+        <!-- Chevron for split tiles -->
+        <Grid Grid.Column="1" Width="48">
+          <Grid.Style>
+            <Style TargetType="Grid">
+              <Setter Property="Visibility" Value="Collapsed" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding HasSubpage}" Value="True">
+                  <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Grid.Style>
+          <Rectangle Width="1" HorizontalAlignment="Left" Margin="0,8" Fill="{DynamicResource DividerStrokeBrush}" />
+          <Button Style="{StaticResource ChromelessButton}" Command="{Binding OpenSubpageCommand}"
+                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                  AutomationProperties.Name="{Binding Title}" Margin="1,0,0,0">
+            <Grid>
+              <Border Style="{StaticResource HoverOverlay}" />
+              <TextBlock Style="{StaticResource TileGlyph}" Text="&#xE76C;" FontSize="12" Margin="0,1,0,0" />
+            </Grid>
+          </Button>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <TextBlock Text="{Binding Title}" Margin="0,12,0,0" FontFamily="{StaticResource BodyFont}" FontSize="14" LineHeight="20"
+               Foreground="{DynamicResource TextFillPrimaryBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxHeight="40"
+               TextTrimming="CharacterEllipsis" />
+    <TextBlock Text="{Binding Subtitle}" FontFamily="{StaticResource BodyFont}" FontSize="12"
+               Foreground="{DynamicResource TextFillSecondaryBrush}" TextAlignment="Center" TextTrimming="CharacterEllipsis">
+      <TextBlock.Style>
+        <Style TargetType="TextBlock">
+          <Setter Property="Visibility" Value="Collapsed" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding HasSubtitle}" Value="True">
+              <Setter Property="Visibility" Value="Visible" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </TextBlock.Style>
+    </TextBlock>
+  </StackPanel>
+</UserControl>

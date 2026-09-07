@@ -1,0 +1,45 @@
+<Project>
+  <!-- Shared build settings for every project in the Llampec solution. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+
+    <!-- Allows building (not running) WPF projects on Linux/macOS CI agents. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- Only Windows 11 24H2+ is supported (checked at run time in OsVersion); no legacy code paths.
+         We deliberately target plain net10.0-windows rather than net10.0-windows10.0.26100.0 to avoid
+         loading the WinRT projection assemblies (memory footprint). -->
+
+    <Version>0.1.0</Version>
+    <Authors>PereLV</Authors>
+    <Product>Llampec</Product>
+    <Copyright>Copyright (c) 2026 PereLV</Copyright>
+    <RepositoryUrl>https://github.com/PereLV/Llampec</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- Memory footprint: workstation, non-concurrent GC (no background GC thread),
+       conservative heap growth, release virtual memory back to the OS. -->
+  <PropertyGroup>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>false</TieredPGO>
+    <!-- Windows NLS instead of ICU: full culture support without loading icu.dll. -->
+    <UseNlsGlobalization>true</UseNlsGlobalization>
+    <SatelliteResourceLanguages>en;es;ca</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="3" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+  </ItemGroup>
+</Project>

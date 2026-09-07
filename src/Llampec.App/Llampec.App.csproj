@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Llampec</RootNamespace>
+    <AssemblyName>Llampec</AssemblyName>
+    <ApplicationIcon>Assets/Llampec.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <SelfContained>false</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- WPF does not support trimming or single-file bundling of native parts; keep it plain. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishSingleFile>false</PublishSingleFile>
+    <!-- No WinForms: the tray icon is implemented directly on Shell_NotifyIcon. -->
+    <UseWindowsForms>false</UseWindowsForms>
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Llampec.Core\Llampec.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="System.Runtime.InteropServices" />
+  </ItemGroup>
+
+</Project>
