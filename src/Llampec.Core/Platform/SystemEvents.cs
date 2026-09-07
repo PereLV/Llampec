@@ -135,6 +135,8 @@ public sealed class SystemEvents : IDisposable
 
         _disposed = true;
         User32.DestroyWindow(Handle);
+        // Allow a later instance (tests, or a future restart-in-place) to register the class again.
+        User32.UnregisterClass(ClassName, Kernel32.GetModuleHandle(null));
         GC.KeepAlive(_wndProc);
     }
 }

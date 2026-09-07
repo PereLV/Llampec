@@ -17,6 +17,11 @@ public static partial class User32
 
     public const int SC_MONITORPOWER = 0xF170;
 
+    /// <summary>lParam values for SC_MONITORPOWER.</summary>
+    public const int MONITOR_ON = -1;
+    public const int MONITOR_LOW_POWER = 1;
+    public const int MONITOR_OFF = 2;
+
     public const uint MOD_ALT = 0x0001;
     public const uint MOD_CONTROL = 0x0002;
     public const uint MOD_SHIFT = 0x0004;
@@ -81,10 +86,17 @@ public static partial class User32
     [LibraryImport("user32.dll", EntryPoint = "RegisterClassExW", SetLastError = true)]
     public static partial ushort RegisterClassEx(in WNDCLASSEXW lpwcx);
 
+    [LibraryImport("user32.dll", EntryPoint = "UnregisterClassW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnregisterClass(string lpClassName, nint hInstance);
+
     [LibraryImport("user32.dll", EntryPoint = "CreateWindowExW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     public static partial nint CreateWindowEx(
         uint dwExStyle, string lpClassName, string lpWindowName, uint dwStyle,
         int x, int y, int nWidth, int nHeight, nint hWndParent, nint hMenu, nint hInstance, nint lpParam);
+
+    [LibraryImport("user32.dll", EntryPoint = "FindWindowW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint FindWindow(string? lpClassName, string? lpWindowName);
 
     [LibraryImport("user32.dll", EntryPoint = "DefWindowProcW")]
     public static partial nint DefWindowProc(nint hWnd, uint msg, nuint wParam, nint lParam);

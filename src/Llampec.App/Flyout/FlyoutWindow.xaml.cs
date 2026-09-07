@@ -37,6 +37,7 @@ public partial class FlyoutWindow : Window
 
         SizeChanged += (_, _) => { if (IsVisible) { Reposition(); } };
         Deactivated += (_, _) => HidePanel();
+        viewModel.CloseRequested += (_, _) => HidePanel();
         PreviewKeyDown += OnPreviewKeyDown;
         App.Current.ThemeChanged += (_, _) => ApplyBackdrop();
 

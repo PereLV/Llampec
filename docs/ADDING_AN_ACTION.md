@@ -39,7 +39,10 @@ Rules of thumb:
 - Never poll. If the state can change behind your back, subscribe to `SystemEvents` (display change, setting change) in the constructor and call `Refresh()`.
 - Set `Subtitle` for a secondary line under the title (e.g. "2 of 3").
 - For `ToggleWithSubpage`, override `SubActions` with the per-item actions; the primary toggle usually applies to all of them and reports `ActionState.Mixed` when they disagree.
+- `ActionKind.Button` tiles close the panel before `ExecuteAsync` runs (like the native panel). If the action needs the panel to be really gone (e.g. turning the display off), add a short delay at the start of `ExecuteCoreAsync`, as `DisplayOffAction` does.
 - No network, no telemetry, no third-party packages.
+
+Existing actions to copy from: `DisplayOff/DisplayOffAction.cs` (a button) and `Taskbar/TaskbarAutoHideAction.cs` (a toggle that reads its state from the shell).
 
 ## 2. Register it
 
