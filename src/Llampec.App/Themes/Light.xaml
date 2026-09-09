@@ -10,7 +10,7 @@
   <SolidColorBrush x:Key="TextFillDisabledBrush" Color="#5C000000" po:Freeze="True" />
   <SolidColorBrush x:Key="TextOnAccentFillPrimaryBrush" Color="#FFFFFF" po:Freeze="True" />
 
-  <SolidColorBrush x:Key="ControlFillDefaultBrush" Color="#B3FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlFillDefaultBrush" Color="#F0FFFFFF" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillSecondaryBrush" Color="#80F9F9F9" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillTertiaryBrush" Color="#4DF9F9F9" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillDisabledBrush" Color="#4DF9F9F9" po:Freeze="True" />
@@ -23,6 +23,7 @@
   <SolidColorBrush x:Key="DividerStrokeBrush" Color="#0F000000" po:Freeze="True" />
   <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#66757575" po:Freeze="True" />
 
+  <!-- The flyout's own surface: a plain opaque fill (no DWM backdrop) — see FlyoutWindow.ApplyBackdrop. -->
   <SolidColorBrush x:Key="SolidBackgroundFillBaseBrush" Color="#F3F3F3" po:Freeze="True" />
   <SolidColorBrush x:Key="LayerFillBrush" Color="#80FFFFFF" po:Freeze="True" />
 

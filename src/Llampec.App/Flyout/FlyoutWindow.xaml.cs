@@ -5,11 +5,10 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Llampec.Diagnostics;
 using Llampec.Interop;
-using Llampec.Platform;
 using Llampec.Settings;
 using Llampec.ViewModels;
-using Microsoft.Win32;
 
 namespace Llampec.Flyout;
 
@@ -24,7 +23,6 @@ public partial class FlyoutWindow : Window
     private readonly FlyoutViewModel _viewModel;
     private readonly AppSettings _settings;
     private nint _hwnd;
-    private bool _hasBackdrop;
     private DateTime _shownAt;
 
     public FlyoutWindow(FlyoutViewModel viewModel, AppSettings settings)
@@ -39,6 +37,10 @@ public partial class FlyoutWindow : Window
         Deactivated += (_, _) => HidePanel();
         viewModel.CloseRequested += (_, _) => HidePanel();
         PreviewKeyDown += OnPreviewKeyDown;
+        // Any key press means the user is navigating with the keyboard (tiles show their focus rectangle
+        // for that); any mouse press means they are not. See FocusVisualTracker.
+        PreviewKeyDown += (_, _) => FocusVisualTracker.Instance.IsKeyboardActive = true;
+        PreviewMouseDown += (_, _) => FocusVisualTracker.Instance.IsKeyboardActive = false;
         App.Current.ThemeChanged += (_, _) => ApplyBackdrop();
 
         // Create the HWND now (SourceInitialized runs) so DWM attributes are set before the first Show().
@@ -80,17 +82,35 @@ public partial class FlyoutWindow : Window
 
         Dwm.SetInt(_hwnd, Dwm.DWMWA_USE_IMMERSIVE_DARK_MODE, App.Current.IsDarkTheme ? 1 : 0);
 
-        // Acrylic (transient) backdrop is what the native flyouts use. When the user disabled transparency
-        // effects, DWM paints nothing, so fall back to a solid surface.
-        _hasBackdrop = IsTransparencyEnabled();
-        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, _hasBackdrop ? Dwm.DWMSBT_TRANSIENTWINDOW : Dwm.DWMSBT_NONE);
-        Root.Background = _hasBackdrop ? Brushes.Transparent : (Brush)FindResource("SolidBackgroundFillBaseBrush");
+        // Native flyouts use a live acrylic blur-behind (DWMSBT_TRANSIENTWINDOW), but that's DWM
+        // re-compositing everything behind the window on every frame it's visible — real, continuous
+        // GPU/compositor cost for a panel whose whole point is popping open for a couple of seconds and
+        // closing again. Once tinted close to opaque (which is what reads right against native anyway,
+        // per visual comparison), the blur underneath barely shows through, so it's not worth the cost:
+        // skip DWM's backdrop entirely and paint a plain, cheap, opaque Fluent surface colour instead.
+        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, Dwm.DWMSBT_NONE);
+        // Look the brush up via Application.FindResource (a flat dictionary lookup), not the
+        // FrameworkElement/Window overload: this runs synchronously inside OnSourceInitialized, itself
+        // called from EnsureHandle() in the constructor, before the window is "loaded" or attached to any
+        // tree — the element-based resource lookup can fail to walk up to Application.Resources at that
+        // point. Application.Resources itself is already fully merged by here (App.OnStartup constructs
+        // ThemeManager, which loads Light/Dark.xaml, before it constructs FlyoutWindow), so this is safe.
+        Root.Background = FindAppBrush("SolidBackgroundFillBaseBrush", 0xFF, 0xF3, 0xF3, 0xF3);
     }
 
-    private static bool IsTransparencyEnabled()
+    /// <summary>Looks up a brush resource on the Application, falling back to a hardcoded solid colour
+    /// instead of throwing if it isn't found — this must never crash the panel.</summary>
+    private static Brush FindAppBrush(string key, byte a, byte r, byte g, byte b)
     {
-        using var key = Registry.CurrentUser.OpenSubKey(SystemTheme.PersonalizeKey);
-        return key?.GetValue("EnableTransparency") is not int v || v != 0;
+        if (App.Current.TryFindResource(key) is Brush brush)
+        {
+            return brush;
+        }
+
+        Log.Error($"Resource '{key}' not found on Application; using fallback colour.", null);
+        var fallback = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        fallback.Freeze();
+        return fallback;
     }
 
     public void Toggle()
@@ -121,14 +141,14 @@ public partial class FlyoutWindow : Window
 
         _viewModel.CloseSubpage();
         _viewModel.RefreshAll();
+        // Never start a fresh open with a leftover focus ring from the previous session.
+        FocusVisualTracker.Instance.IsKeyboardActive = false;
         Root.Opacity = 0;
         Show();
         // DWM composes the first frame opaque unless the backdrop is (re)applied on the visible window
         // and the frame is refreshed; do it after Show() every time.
         ApplyTransparentBackground();
         Reposition();
-        // A real attribute change (NONE -> acrylic) one frame after Show() makes DWM pick the backdrop up.
-        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, Dwm.DWMSBT_NONE);
         Dispatcher.BeginInvoke(() =>
         {
             ApplyBackdrop();

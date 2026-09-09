@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+                    xmlns:flyout="clr-namespace:Llampec.Flyout">
   <!-- Theme-independent resources: fonts, metrics, control templates. Colours come from Light/Dark.xaml. -->
 
   <FontFamily x:Key="BodyFont">Segoe UI Variable Text, Segoe UI</FontFamily>
@@ -29,10 +30,17 @@
             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
           </Border>
           <ControlTemplate.Triggers>
-            <Trigger Property="IsKeyboardFocused" Value="True">
+            <!-- Windows shows a tile's focus rectangle only after real keyboard navigation (Tab / arrow
+                 keys) — never right after the panel opens or after a mouse click, even though WPF gives
+                 the first tile keyboard focus in both those cases. FocusVisualTracker tells them apart. -->
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=IsKeyboardFocused}" Value="True" />
+                <Condition Binding="{Binding Source={x:Static flyout:FocusVisualTracker.Instance}, Path=IsKeyboardActive}" Value="True" />
+              </MultiDataTrigger.Conditions>
               <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource TextFillPrimaryBrush}" />
               <Setter TargetName="Root" Property="BorderThickness" Value="2" />
-            </Trigger>
+            </MultiDataTrigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>

@@ -9,3 +9,6 @@ TestResults/
 artifacts/
 publish/
 *.log
+
+# Local build agent exchange files (tools/build-agent.ps1)
+.claude-build/

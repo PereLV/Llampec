@@ -151,8 +151,9 @@
       </Grid>
     </Grid>
 
-    <TextBlock Text="{Binding Title}" Margin="0,12,0,0" FontFamily="{StaticResource BodyFont}" FontSize="14" LineHeight="20"
-               Foreground="{DynamicResource TextFillPrimaryBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxHeight="40"
+    <!-- Matches the native panel's tile caption: Segoe UI Variable "Caption" ramp (12px / 16px line height). -->
+    <TextBlock Text="{Binding Title}" Margin="0,8,0,0" FontFamily="{StaticResource BodyFont}" FontSize="12" LineHeight="16"
+               Foreground="{DynamicResource TextFillPrimaryBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxHeight="32"
                TextTrimming="CharacterEllipsis" />
     <TextBlock Text="{Binding Subtitle}" FontFamily="{StaticResource BodyFont}" FontSize="12"
                Foreground="{DynamicResource TextFillSecondaryBrush}" TextAlignment="Center" TextTrimming="CharacterEllipsis">

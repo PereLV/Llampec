@@ -26,7 +26,7 @@
   <SolidColorBrush x:Key="DividerStrokeBrush" Color="#15FFFFFF" po:Freeze="True" />
   <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#66757575" po:Freeze="True" />
 
-  <!-- Surfaces (used when the DWM backdrop is unavailable, e.g. transparency effects disabled) -->
+  <!-- The flyout's own surface: a plain opaque fill (no DWM backdrop) — see FlyoutWindow.ApplyBackdrop. -->
   <SolidColorBrush x:Key="SolidBackgroundFillBaseBrush" Color="#202020" po:Freeze="True" />
   <SolidColorBrush x:Key="LayerFillBrush" Color="#0DFFFFFF" po:Freeze="True" />
 
