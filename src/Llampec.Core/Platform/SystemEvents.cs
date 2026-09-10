@@ -45,7 +45,13 @@ public sealed class SystemEvents : IDisposable
             Marshal.FreeHGlobal(wc.lpszClassName);
         }
 
-        Handle = User32.CreateWindowEx(0, ClassName, "Llampec", 0, 0, 0, 0, 0, User32.HWND_MESSAGE, 0, hInstance, 0);
+        // NOT a message-only window (HWND_MESSAGE): those never receive messages Windows sends via
+        // SendMessageTimeout(HWND_BROADCAST, ...) -- WM_SETTINGCHANGE (theme/colour changes) included --
+        // because broadcast delivery only walks the normal top-level window list, which a message-only
+        // window is deliberately excluded from. A real top-level window still costs nothing at idle (no
+        // timers, no polling); WS_EX_TOOLWINDOW plus never calling ShowWindow keeps it invisible and out
+        // of the taskbar/Alt+Tab, same as how FlyoutWindow hides itself.
+        Handle = User32.CreateWindowEx((uint)User32.WS_EX_TOOLWINDOW, ClassName, "Llampec", 0, 0, 0, 0, 0, 0, 0, hInstance, 0);
         if (Handle == 0)
         {
             throw new InvalidOperationException($"CreateWindowEx failed: {Marshal.GetLastPInvokeError()}");

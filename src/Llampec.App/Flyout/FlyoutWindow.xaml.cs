@@ -7,8 +7,10 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Llampec.Diagnostics;
 using Llampec.Interop;
+using Llampec.Platform;
 using Llampec.Settings;
 using Llampec.ViewModels;
+using Microsoft.Win32;
 
 namespace Llampec.Flyout;
 
@@ -82,20 +84,29 @@ public partial class FlyoutWindow : Window
 
         Dwm.SetInt(_hwnd, Dwm.DWMWA_USE_IMMERSIVE_DARK_MODE, App.Current.IsDarkTheme ? 1 : 0);
 
-        // Native flyouts use a live acrylic blur-behind (DWMSBT_TRANSIENTWINDOW), but that's DWM
-        // re-compositing everything behind the window on every frame it's visible — real, continuous
-        // GPU/compositor cost for a panel whose whole point is popping open for a couple of seconds and
-        // closing again. Once tinted close to opaque (which is what reads right against native anyway,
-        // per visual comparison), the blur underneath barely shows through, so it's not worth the cost:
-        // skip DWM's backdrop entirely and paint a plain, cheap, opaque Fluent surface colour instead.
-        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, Dwm.DWMSBT_NONE);
+        // Real acrylic blur-behind, like native flyouts (PowerToys' own quick-access panel included) —
+        // a flat solid colour can't show a genuine hint of the desktop moving behind it, only DWM's live
+        // blur can. This does cost DWM some GPU while the panel is visible, but only then (a few seconds
+        // per open), and it's the same cost every other flyout on the system already pays; measuring it
+        // separately from WPF's own baseline footprint showed it isn't the expensive part. When the user
+        // disabled transparency effects system-wide, respect that and fall back to a flat surface colour.
+        bool hasBackdrop = IsTransparencyEnabled();
+        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, hasBackdrop ? Dwm.DWMSBT_TRANSIENTWINDOW : Dwm.DWMSBT_NONE);
         // Look the brush up via Application.FindResource (a flat dictionary lookup), not the
         // FrameworkElement/Window overload: this runs synchronously inside OnSourceInitialized, itself
         // called from EnsureHandle() in the constructor, before the window is "loaded" or attached to any
         // tree — the element-based resource lookup can fail to walk up to Application.Resources at that
         // point. Application.Resources itself is already fully merged by here (App.OnStartup constructs
         // ThemeManager, which loads Light/Dark.xaml, before it constructs FlyoutWindow), so this is safe.
-        Root.Background = FindAppBrush("SolidBackgroundFillBaseBrush", 0xFF, 0xF3, 0xF3, 0xF3);
+        Root.Background = hasBackdrop
+            ? FindAppBrush("AcrylicTintOverlayBrush", 0xA8, 0xFF, 0xFF, 0xFF)
+            : FindAppBrush("SolidBackgroundFillBaseBrush", 0xFF, 0xF3, 0xF3, 0xF3);
+    }
+
+    private static bool IsTransparencyEnabled()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(SystemTheme.PersonalizeKey);
+        return key?.GetValue("EnableTransparency") is not int v || v != 0;
     }
 
     /// <summary>Looks up a brush resource on the Application, falling back to a hardcoded solid colour
@@ -149,6 +160,8 @@ public partial class FlyoutWindow : Window
         // and the frame is refreshed; do it after Show() every time.
         ApplyTransparentBackground();
         Reposition();
+        // A real attribute change (NONE -> acrylic) one frame after Show() makes DWM pick the backdrop up.
+        Dwm.SetInt(_hwnd, Dwm.DWMWA_SYSTEMBACKDROP_TYPE, Dwm.DWMSBT_NONE);
         Dispatcher.BeginInvoke(() =>
         {
             ApplyBackdrop();

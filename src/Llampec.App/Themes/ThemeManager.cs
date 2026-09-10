@@ -17,6 +17,8 @@ public sealed class ThemeManager : IDisposable
     private readonly Application _app;
     private readonly SystemEvents _events;
     private readonly AppSettings _settings;
+    private bool? _appliedDark; // null until the first Apply(); forces that first call to always take effect
+    private uint _appliedAccentArgb;
 
     public ThemeManager(Application app, SystemEvents events, AppSettings settings)
     {
@@ -39,16 +41,24 @@ public sealed class ThemeManager : IDisposable
             AppTheme.Dark => true,
             _ => !SystemTheme.IsAppsLightTheme(),
         };
+        uint argb = SystemTheme.GetAccentColorArgb();
 
-        var merged = _app.Resources.MergedDictionaries;
-        var current = merged[0];
-        Uri wanted = dark ? DarkUri : LightUri;
-        if (current.Source != wanted)
+        // WM_SETTINGCHANGE fires for lots of unrelated settings too (fonts, mouse, ...) whenever the
+        // broadcast's section is null, and now that SystemEvents' window actually receives broadcasts
+        // (see SystemEvents.cs), that means Apply() runs far more often than the theme actually changes.
+        // Skip the resource-dictionary swap and the ThemeChanged broadcast (which repaints the flyout's
+        // backdrop via DWM calls) when neither dark/light nor the accent colour actually moved.
+        if (_appliedDark == dark && _appliedAccentArgb == argb)
         {
-            merged[0] = new ResourceDictionary { Source = wanted };
+            return;
         }
 
-        uint argb = SystemTheme.GetAccentColorArgb();
+        if (_appliedDark != dark)
+        {
+            var merged = _app.Resources.MergedDictionaries;
+            merged[0] = new ResourceDictionary { Source = dark ? DarkUri : LightUri };
+        }
+
         var accent = Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
         SetBrush("AccentFillBrush", accent);
         // Fluent uses lighter/darker accent variants for hover/pressed on accent tiles.
@@ -57,6 +67,8 @@ public sealed class ThemeManager : IDisposable
         SetBrush("AccentTextBrush", dark ? Lighten(accent, 0.35) : Darken(accent, 0.15));
 
         IsDark = dark;
+        _appliedDark = dark;
+        _appliedAccentArgb = argb;
         ThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 

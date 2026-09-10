@@ -31,8 +31,8 @@ public static partial class Dwm
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmGetColorizationColor(out uint pcrColorization, [MarshalAs(UnmanagedType.Bool)] out bool pfOpaqueBlend);
 
-    public static void SetInt(nint hwnd, uint attribute, int value) =>
-        _ = DwmSetWindowAttribute(hwnd, attribute, in value, sizeof(int));
+    public static int SetInt(nint hwnd, uint attribute, int value) =>
+        DwmSetWindowAttribute(hwnd, attribute, in value, sizeof(int));
 
     public static void SetUInt(nint hwnd, uint attribute, uint value) =>
         _ = DwmSetWindowAttribute(hwnd, attribute, in value, sizeof(uint));
