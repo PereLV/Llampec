@@ -48,6 +48,12 @@
       </Style.Triggers>
     </Style>
 
+    <!-- Small overlay glyph badged onto the bottom-right corner of the main glyph (e.g. a power symbol
+         over a monitor icon). Same Style+DataTrigger visibility pattern as the chevron below. -->
+    <Style x:Key="TileGlyphBadge" TargetType="TextBlock" BasedOn="{StaticResource TileGlyph}">
+      <Setter Property="FontSize" Value="10" />
+    </Style>
+
     <!-- Hover / pressed overlays, drawn on top of the face so they work for both accent and neutral tiles. -->
     <!-- Neutral tiles use the theme overlay (darker in light theme, lighter in dark theme);
          accent (on/mixed) tiles always darken, like the native panel. -->
@@ -122,7 +128,25 @@
                 AutomationProperties.Name="{Binding Title}">
           <Grid>
             <Border Style="{StaticResource HoverOverlay}" />
-            <TextBlock Style="{StaticResource TileGlyph}" Text="{Binding Glyph}" />
+            <Grid Width="24" Height="24">
+              <TextBlock Style="{StaticResource TileGlyph}" Text="{Binding Glyph}" />
+
+              <!-- Badge: a small punched-out circle so it reads clearly over the main glyph. -->
+              <Grid Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3">
+                <Grid.Style>
+                  <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasGlyphBadge}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Grid.Style>
+                <Border CornerRadius="7" Background="{DynamicResource ControlFillDefaultBrush}" />
+                <TextBlock Style="{StaticResource TileGlyphBadge}" Text="{Binding GlyphBadge}" />
+              </Grid>
+            </Grid>
           </Grid>
         </Button>
 

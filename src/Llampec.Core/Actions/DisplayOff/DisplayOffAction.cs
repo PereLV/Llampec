@@ -18,7 +18,8 @@ public sealed class DisplayOffAction(SystemEvents systemEvents) : QuickActionBas
 
     public override string Id => "display-off";
     public override string Title => "Turn off display";
-    public override string Glyph => "\uE7E8"; // PowerButton
+    public override string Glyph => "\uE7F4"; // TVMonitor
+    public override string? GlyphBadge => "\uE7E8"; // PowerButton
     public override ActionKind Kind => ActionKind.Button;
 
     protected override async Task ExecuteCoreAsync(CancellationToken cancellationToken)

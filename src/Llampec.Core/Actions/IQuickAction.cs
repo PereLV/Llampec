@@ -46,6 +46,12 @@ public interface IQuickAction
     /// <summary>A single character from the Segoe Fluent Icons font.</summary>
     string Glyph { get; }
 
+    /// <summary>
+    /// Optional second glyph drawn small, over the bottom-right corner of <see cref="Glyph"/> (e.g. a
+    /// power symbol badged onto a monitor icon). Null for a plain single-glyph tile.
+    /// </summary>
+    string? GlyphBadge { get; }
+
     ActionKind Kind { get; }
 
     /// <summary>False when the action cannot work on this machine right now (e.g. HDR with no HDR-capable display).</summary>

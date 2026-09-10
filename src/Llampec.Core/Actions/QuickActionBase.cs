@@ -14,6 +14,7 @@ public abstract class QuickActionBase : IQuickAction
     public abstract string Id { get; }
     public abstract string Title { get; }
     public abstract string Glyph { get; }
+    public virtual string? GlyphBadge => null;
     public abstract ActionKind Kind { get; }
 
     public string? Subtitle

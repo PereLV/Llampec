@@ -41,8 +41,9 @@ Rules of thumb:
 - For `ToggleWithSubpage`, override `SubActions` with the per-item actions; the primary toggle usually applies to all of them and reports `ActionState.Mixed` when they disagree.
 - `ActionKind.Button` tiles close the panel before `ExecuteAsync` runs (like the native panel). If the action needs the panel to be really gone (e.g. turning the display off), add a short delay at the start of `ExecuteCoreAsync`, as `DisplayOffAction` does.
 - No network, no telemetry, no third-party packages.
+- `Glyph` can be paired with an optional `GlyphBadge` — a second, smaller glyph drawn over its bottom-right corner (e.g. `DisplayOffAction` badges a `PowerButton` onto a `TVMonitor` glyph so the tile reads as "power off this screen" rather than a generic power button). Leave it `null` (the `QuickActionBase` default) for a plain single-glyph tile.
 
-Existing actions to copy from: `DisplayOff/DisplayOffAction.cs` (a button) and `Taskbar/TaskbarAutoHideAction.cs` (a toggle that reads its state from the shell).
+Existing actions to copy from: `DisplayOff/DisplayOffAction.cs` (a button, with a `GlyphBadge`) and `Taskbar/TaskbarAutoHideAction.cs` (a toggle that reads its state from the shell).
 
 ## 2. Register it
 
