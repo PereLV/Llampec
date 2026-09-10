@@ -17,6 +17,28 @@ public static class SystemTheme
         return key?.GetValue(AppsUseLightThemeValue) is not int v || v != 0;
     }
 
+    /// <summary>
+    /// Sets both the "apps" and "system" colour mode to light or dark -- the same two registry values
+    /// Settings &gt; Personalization &gt; Colors' Light/Dark switch writes ("Custom" mode, where the two
+    /// differ, is not exposed here) -- then broadcasts WM_SETTINGCHANGE the same way Settings does after an
+    /// edit there, so Explorer and every theme-aware app (Llampec's own panel included, through
+    /// <see cref="SystemEvents"/>) repaints immediately instead of waiting for the next unrelated broadcast.
+    /// </summary>
+    public static void SetLightTheme(bool light)
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(PersonalizeKey, writable: true)
+            ?? throw new InvalidOperationException($@"Registry key HKCU\{PersonalizeKey} not found");
+
+        int value = light ? 1 : 0;
+        key.SetValue(AppsUseLightThemeValue, value, RegistryValueKind.DWord);
+        key.SetValue(SystemUsesLightThemeValue, value, RegistryValueKind.DWord);
+
+        // SendMessageTimeout, not SendMessage: a hung top-level window elsewhere on the desktop can't
+        // block this call forever, and nothing here needs the reply.
+        User32.SendMessageTimeout(User32.HWND_BROADCAST, User32.WM_SETTINGCHANGE, 0,
+            "ImmersiveColorSet", User32.SMTO_ABORTIFHUNG, 3000, out _);
+    }
+
     /// <summary>Accent colour as 0xAARRGGBB. Falls back to Windows' default blue.</summary>
     public static uint GetAccentColorArgb()
     {

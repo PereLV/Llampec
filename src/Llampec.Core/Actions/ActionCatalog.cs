@@ -17,7 +17,7 @@ public static class ActionCatalog
             // Real actions are added one per development step (default tile order):
             // new Hdr.HdrAction(systemEvents),
             new DisplayOff.DisplayOffAction(systemEvents),
-            // new Theme.ThemeAction(systemEvents),
+            new Theme.ThemeAction(),
             // new Projection.ProjectionAction(systemEvents),
             new Taskbar.TaskbarAutoHideAction(),
         };

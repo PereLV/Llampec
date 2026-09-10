@@ -30,6 +30,8 @@ public sealed class TileViewModel : ObservableObject
     public string Title => Action.Title;
     public string? Subtitle => Action.Subtitle;
     public string Glyph => Action.Glyph;
+    public string? GlyphBadge => Action.GlyphBadge;
+    public bool HasGlyphBadge => !string.IsNullOrEmpty(Action.GlyphBadge);
     public bool IsAvailable => Action.IsAvailable;
     public bool IsBusy => Action.IsBusy;
     public bool IsOn => Action.State == ActionState.On;

@@ -1,6 +1,7 @@
 using Llampec.Actions;
 using Llampec.Actions.DisplayOff;
 using Llampec.Actions.Taskbar;
+using Llampec.Actions.Theme;
 using Llampec.Interop;
 using Llampec.Platform;
 using Xunit;
@@ -24,6 +25,12 @@ public class ActionCatalogTests
             Assert.False(string.IsNullOrWhiteSpace(action.Title), $"{action.Id} has no title");
             Assert.Equal(1, action.Glyph.Length);
             Assert.InRange(action.Glyph[0], '\uE000', '\uF8FF'); // Segoe Fluent Icons private use area
+            if (action.GlyphBadge is not null)
+            {
+                Assert.Equal(1, action.GlyphBadge.Length);
+                Assert.InRange(action.GlyphBadge[0], '\uE000', '\uF8FF');
+            }
+
             Assert.Equal(action.Kind == ActionKind.ToggleWithSubpage, action.SubActions.Count > 0);
         }
     }
@@ -40,6 +47,23 @@ public class ActionCatalogTests
 
         var taskbar = Assert.Single(actions.OfType<TaskbarAutoHideAction>());
         Assert.Equal(ActionKind.Toggle, taskbar.Kind);
+    }
+
+    [Fact]
+    public void Theme_state_matches_the_real_system_theme()
+    {
+        // Only asserts that the tile's state matches the registry, the same way Taskbar_state_is_readable
+        // checks the shell -- never calls ExecuteAsync, which would really flip the developer's Windows
+        // theme (dark mode is a system-wide setting, not something scoped to a test process).
+        using var events = new SystemEvents();
+        var actions = ActionCatalog.Create(events);
+
+        var theme = Assert.Single(actions.OfType<ThemeAction>());
+        Assert.Equal(ActionKind.Toggle, theme.Kind);
+
+        theme.Refresh();
+        bool expectedOn = !SystemTheme.IsAppsLightTheme();
+        Assert.Equal(expectedOn ? ActionState.On : ActionState.Off, theme.State);
     }
 
     [Fact]

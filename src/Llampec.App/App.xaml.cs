@@ -88,6 +88,9 @@ public partial class App : Application
         _themeManager = new ThemeManager(this, _systemEvents, Settings);
         _themeManager.ThemeChanged += (_, _) => ThemeChanged?.Invoke(this, EventArgs.Empty);
 
+        // ThemeAction (the "Dark mode" tile) changes the real Windows theme directly and broadcasts
+        // WM_SETTINGCHANGE itself; ThemeManager picks that up through the existing SystemEvents
+        // subscription like any other external theme change, so there is nothing to wire up here.
         var actions = ActionCatalog.Create(_systemEvents);
         var viewModel = new FlyoutViewModel(actions, Settings);
         var flyout = new FlyoutWindow(viewModel, Settings);
