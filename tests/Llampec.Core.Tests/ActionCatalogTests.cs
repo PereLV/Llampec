@@ -4,7 +4,6 @@ using Llampec.Actions.Taskbar;
 using Llampec.Actions.Theme;
 using Llampec.Interop;
 using Llampec.Platform;
-using Llampec.Settings;
 using Xunit;
 
 namespace Llampec.Tests;
@@ -15,7 +14,7 @@ public class ActionCatalogTests
     public void Catalog_ids_are_unique_and_glyphs_are_single_code_points()
     {
         using var events = new SystemEvents();
-        var actions = ActionCatalog.Create(events, new AppSettings(), () => false, () => { });
+        var actions = ActionCatalog.Create(events);
 
         Assert.NotEmpty(actions);
         Assert.Equal(actions.Count, actions.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count());
@@ -40,7 +39,7 @@ public class ActionCatalogTests
     public void Catalog_contains_display_off_and_taskbar_actions()
     {
         using var events = new SystemEvents();
-        var actions = ActionCatalog.Create(events, new AppSettings(), () => false, () => { });
+        var actions = ActionCatalog.Create(events);
 
         var displayOff = Assert.Single(actions.OfType<DisplayOffAction>());
         Assert.Equal(ActionKind.Button, displayOff.Kind);
@@ -51,25 +50,20 @@ public class ActionCatalogTests
     }
 
     [Fact]
-    public async Task Theme_action_toggles_via_delegates_without_touching_real_settings()
+    public void Theme_state_matches_the_real_system_theme()
     {
-        // isDark/applyTheme stand in for ThemeManager here, so this never touches SettingsStore
-        // (see TaskbarAutoHideAction's test for the same rationale re: real user state).
+        // Only asserts that the tile's state matches the registry, the same way Taskbar_state_is_readable
+        // checks the shell -- never calls ExecuteAsync, which would really flip the developer's Windows
+        // theme (dark mode is a system-wide setting, not something scoped to a test process).
         using var events = new SystemEvents();
-        var settings = new AppSettings();
-        bool dark = false;
-        int applyCount = 0;
-        var actions = ActionCatalog.Create(events, settings, () => dark, () => applyCount++);
+        var actions = ActionCatalog.Create(events);
 
         var theme = Assert.Single(actions.OfType<ThemeAction>());
         Assert.Equal(ActionKind.Toggle, theme.Kind);
 
         theme.Refresh();
-        Assert.Equal(ActionState.Off, theme.State);
-
-        await theme.ExecuteAsync(CancellationToken.None);
-        Assert.Equal(AppTheme.Dark, settings.Theme);
-        Assert.Equal(1, applyCount);
+        bool expectedOn = !SystemTheme.IsAppsLightTheme();
+        Assert.Equal(expectedOn ? ActionState.On : ActionState.Off, theme.State);
     }
 
     [Fact]

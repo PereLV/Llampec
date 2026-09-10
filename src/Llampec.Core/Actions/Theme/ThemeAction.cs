@@ -1,19 +1,15 @@
-using Llampec.Settings;
+using Llampec.Platform;
 
 namespace Llampec.Actions.Theme;
 
 /// <summary>
-/// "Dark mode": switches between the light and dark theme. Pressing the tile always picks an explicit
-/// <see cref="AppTheme.Light"/> or <see cref="AppTheme.Dark"/> — like the native Quick Settings toggles,
-/// it overrides <see cref="AppTheme.System"/> rather than trying to represent it as a third state.
+/// "Dark mode": the same switch as Settings &gt; Personalization &gt; Colors, applied to the whole system
+/// (not just Llampec's own panel) via <see cref="SystemTheme.SetLightTheme"/>. Llampec's panel repaints
+/// itself afterwards through the same WM_SETTINGCHANGE broadcast every other theme-aware app reacts to
+/// (see <see cref="SystemEvents"/> and <c>ThemeManager</c>), so this action does not need to know about
+/// Llampec's own theme setting at all.
 /// </summary>
-/// <remarks>
-/// Core has no reference to the WPF-only <c>ThemeManager</c>, so the actual theme is read and applied
-/// through delegates supplied from <c>App.xaml.cs</c>: <paramref name="isDark"/> reports the theme that is
-/// currently painted on screen, and <paramref name="applyTheme"/> repaints it (and persists the setting)
-/// after <see cref="ExecuteCoreAsync"/> flips <paramref name="settings"/>.
-/// </remarks>
-public sealed class ThemeAction(AppSettings settings, Func<bool> isDark, Action applyTheme) : QuickActionBase
+public sealed class ThemeAction : QuickActionBase
 {
     public override string Id => "theme";
     public override string Title => "Dark mode";
@@ -23,14 +19,13 @@ public sealed class ThemeAction(AppSettings settings, Func<bool> isDark, Action 
 
     public override void Refresh()
     {
-        State = isDark() ? ActionState.On : ActionState.Off;
+        State = SystemTheme.IsAppsLightTheme() ? ActionState.Off : ActionState.On;
         IsAvailable = true;
     }
 
     protected override Task ExecuteCoreAsync(CancellationToken cancellationToken)
     {
-        settings.Theme = isDark() ? AppTheme.Light : AppTheme.Dark;
-        applyTheme();
+        SystemTheme.SetLightTheme(light: !SystemTheme.IsAppsLightTheme());
         return Task.CompletedTask;
     }
 }

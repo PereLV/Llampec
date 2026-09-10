@@ -85,17 +85,13 @@ public partial class App : Application
             Log.Error("Unhandled exception", args.ExceptionObject as Exception);
 
         _systemEvents = new SystemEvents();
-        var themeManager = new ThemeManager(this, _systemEvents, Settings);
-        _themeManager = themeManager;
-        themeManager.ThemeChanged += (_, _) => ThemeChanged?.Invoke(this, EventArgs.Empty);
+        _themeManager = new ThemeManager(this, _systemEvents, Settings);
+        _themeManager.ThemeChanged += (_, _) => ThemeChanged?.Invoke(this, EventArgs.Empty);
 
-        // ThemeAction toggles Settings.Theme itself; these two delegates are how it reads/repaints the
-        // WPF-only ThemeManager without Llampec.Core taking a dependency on it.
-        var actions = ActionCatalog.Create(_systemEvents, Settings, () => themeManager.IsDark, () =>
-        {
-            themeManager.Apply();
-            SaveSettings();
-        });
+        // ThemeAction (the "Dark mode" tile) changes the real Windows theme directly and broadcasts
+        // WM_SETTINGCHANGE itself; ThemeManager picks that up through the existing SystemEvents
+        // subscription like any other external theme change, so there is nothing to wire up here.
+        var actions = ActionCatalog.Create(_systemEvents);
         var viewModel = new FlyoutViewModel(actions, Settings);
         var flyout = new FlyoutWindow(viewModel, Settings);
         _flyout = flyout;

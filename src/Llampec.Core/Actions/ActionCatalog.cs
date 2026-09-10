@@ -1,5 +1,4 @@
 using Llampec.Platform;
-using Llampec.Settings;
 
 namespace Llampec.Actions;
 
@@ -9,21 +8,16 @@ namespace Llampec.Actions;
 /// </summary>
 public static class ActionCatalog
 {
-    /// <param name="isDark">Reports the theme currently painted on screen. Used by <see cref="Theme.ThemeAction"/>.</param>
-    /// <param name="applyTheme">Repaints and persists the theme after <see cref="Theme.ThemeAction"/> flips it.</param>
-    public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents, AppSettings settings, Func<bool> isDark, Action applyTheme)
+    public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents)
     {
         ArgumentNullException.ThrowIfNull(systemEvents);
-        ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(isDark);
-        ArgumentNullException.ThrowIfNull(applyTheme);
 
         var actions = new List<IQuickAction>
         {
             // Real actions are added one per development step (default tile order):
             // new Hdr.HdrAction(systemEvents),
             new DisplayOff.DisplayOffAction(systemEvents),
-            new Theme.ThemeAction(settings, isDark, applyTheme),
+            new Theme.ThemeAction(),
             // new Projection.ProjectionAction(systemEvents),
             new Taskbar.TaskbarAutoHideAction(),
         };
