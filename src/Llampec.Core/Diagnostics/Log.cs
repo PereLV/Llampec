@@ -18,6 +18,24 @@ public static class Log
         {
             _filePath = filePath;
         }
+
+        // SettingsStore.Load() doesn't create %LOCALAPPDATA%\Llampec\ (it only reads), so on a machine
+        // where settings.json was never saved yet, that folder doesn't exist and every AppendAllText below
+        // was throwing DirectoryNotFoundException -- silently, since it's an IOException subtype and the
+        // catch below swallows it. Create it here so logging actually works on a fresh install.
+        if (filePath is not null)
+        {
+            try
+            {
+                string? dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     public static void Info(string message) => Write("INFO", message);

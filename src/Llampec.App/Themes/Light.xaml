@@ -10,7 +10,7 @@
   <SolidColorBrush x:Key="TextFillDisabledBrush" Color="#5C000000" po:Freeze="True" />
   <SolidColorBrush x:Key="TextOnAccentFillPrimaryBrush" Color="#FFFFFF" po:Freeze="True" />
 
-  <SolidColorBrush x:Key="ControlFillDefaultBrush" Color="#B3FFFFFF" po:Freeze="True" />
+  <SolidColorBrush x:Key="ControlFillDefaultBrush" Color="#F0FFFFFF" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillSecondaryBrush" Color="#80F9F9F9" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillTertiaryBrush" Color="#4DF9F9F9" po:Freeze="True" />
   <SolidColorBrush x:Key="ControlFillDisabledBrush" Color="#4DF9F9F9" po:Freeze="True" />
@@ -23,8 +23,16 @@
   <SolidColorBrush x:Key="DividerStrokeBrush" Color="#0F000000" po:Freeze="True" />
   <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#66757575" po:Freeze="True" />
 
+  <!-- Flat fallback surface, used when the user has system transparency effects disabled (no DWM
+       backdrop at all in that case) — see FlyoutWindow.ApplyBackdrop. -->
   <SolidColorBrush x:Key="SolidBackgroundFillBaseBrush" Color="#F3F3F3" po:Freeze="True" />
   <SolidColorBrush x:Key="LayerFillBrush" Color="#80FFFFFF" po:Freeze="True" />
+
+  <!-- Tint painted over DWM's live acrylic blur, same idea as native flyouts: enough opacity to read as
+       a frosted surface rather than a plain see-through window, while still letting real colour/motion
+       from whatever's behind show through softly (compare against PowerToys' own quick-access panel).
+       Starting point — tune against a real screenshot once compared side-by-side. -->
+  <SolidColorBrush x:Key="AcrylicTintOverlayBrush" Color="#A8FFFFFF" po:Freeze="True" />
 
   <SolidColorBrush x:Key="MenuFlyoutBackgroundBrush" Color="#F9F9F9" po:Freeze="True" />
   <SolidColorBrush x:Key="MenuFlyoutItemHoverBrush" Color="#09000000" po:Freeze="True" />

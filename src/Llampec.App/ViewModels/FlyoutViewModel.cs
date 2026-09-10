@@ -13,7 +13,7 @@ public sealed class FlyoutViewModel : ObservableObject
     {
         var dispatcher = Dispatcher.CurrentDispatcher;
         var ordered = OrderAndFilter(actions, settings);
-        Tiles = ordered.Select(a => new TileViewModel(a, dispatcher, OpenSubpage)).ToList();
+        Tiles = ordered.Select(a => new TileViewModel(a, dispatcher, OpenSubpage, RequestClose)).ToList();
         BackCommand = new RelayCommand(CloseSubpage);
     }
 
@@ -35,6 +35,11 @@ public sealed class FlyoutViewModel : ObservableObject
     public bool IsSubpageOpen => _subpage is not null;
 
     public RelayCommand BackCommand { get; }
+
+    /// <summary>A tile asked for the panel to close (button actions). The window hides itself.</summary>
+    public event EventHandler? CloseRequested;
+
+    private void RequestClose() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Called when the panel opens: every action re-reads its state.</summary>
     public void RefreshAll()

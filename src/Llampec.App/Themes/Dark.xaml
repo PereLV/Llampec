@@ -26,9 +26,14 @@
   <SolidColorBrush x:Key="DividerStrokeBrush" Color="#15FFFFFF" po:Freeze="True" />
   <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#66757575" po:Freeze="True" />
 
-  <!-- Surfaces (used when the DWM backdrop is unavailable, e.g. transparency effects disabled) -->
+  <!-- Flat fallback surface, used when the user has system transparency effects disabled (no DWM
+       backdrop at all in that case) — see FlyoutWindow.ApplyBackdrop. -->
   <SolidColorBrush x:Key="SolidBackgroundFillBaseBrush" Color="#202020" po:Freeze="True" />
   <SolidColorBrush x:Key="LayerFillBrush" Color="#0DFFFFFF" po:Freeze="True" />
+
+  <!-- Tint painted over DWM's live acrylic blur; see the light theme for why. Not yet checked against a
+       real native dark-mode capture — revisit the opacity once we have one. -->
+  <SolidColorBrush x:Key="AcrylicTintOverlayBrush" Color="#70202020" po:Freeze="True" />
 
   <!-- Menu -->
   <SolidColorBrush x:Key="MenuFlyoutBackgroundBrush" Color="#2C2C2C" po:Freeze="True" />

@@ -16,20 +16,6 @@ internal sealed class SampleToggleAction(string id, string title, string glyph) 
     }
 }
 
-internal sealed class SampleButtonAction : QuickActionBase
-{
-    public override string Id => "sample.button";
-    public override string Title => "Sample button";
-    public override string Glyph => "\uE7E8"; // PowerButton
-    public override ActionKind Kind => ActionKind.Button;
-
-    protected override Task ExecuteCoreAsync(CancellationToken cancellationToken)
-    {
-        Diagnostics.Log.Info("Sample button pressed");
-        return Task.CompletedTask;
-    }
-}
-
 internal sealed class SampleSubpageAction : QuickActionBase
 {
     private readonly List<IQuickAction> _subActions =

@@ -22,7 +22,7 @@
 
   <Window.Resources>
     <DataTemplate x:Key="TileTemplate" DataType="{x:Type vm:TileViewModel}">
-      <local:TileView Margin="0,0,12,24" />
+      <local:TileView Margin="0,0,12,12" />
     </DataTemplate>
 
     <!-- Sub-page row: glyph, title, and a Windows-11-style toggle switch. -->
@@ -112,7 +112,7 @@
     <Grid>
       <!-- Main page: tile grid -->
       <ItemsControl x:Name="TileGrid" ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource TileTemplate}"
-                    Margin="0,0,-12,-24" Focusable="False" KeyboardNavigation.TabNavigation="Cycle">
+                    Margin="0,0,-12,-12" Focusable="False" KeyboardNavigation.TabNavigation="Cycle">
         <ItemsControl.Style>
           <Style TargetType="ItemsControl">
             <Style.Triggers>

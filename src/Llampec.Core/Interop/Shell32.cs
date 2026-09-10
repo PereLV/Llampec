@@ -53,4 +53,26 @@ public static partial class Shell32
     [LibraryImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
+
+    // ---- SHAppBarMessage (shellapi.h): taskbar state ----
+
+    public const uint ABM_GETSTATE = 0x00000004;
+    public const uint ABM_SETSTATE = 0x0000000A;
+
+    public const uint ABS_AUTOHIDE = 0x00000001;
+    public const uint ABS_ALWAYSONTOP = 0x00000002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct APPBARDATA
+    {
+        public uint cbSize;
+        public nint hWnd;
+        public uint uCallbackMessage;
+        public uint uEdge;
+        public User32.RECT rc;
+        public nint lParam;
+    }
+
+    [LibraryImport("shell32.dll")]
+    public static partial nuint SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
 }
