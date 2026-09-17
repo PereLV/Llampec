@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/Llampec.sln", "-c", "Debug"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "build-arm64",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/src/Llampec.App", "-c", "Debug", "-r", "win-arm64"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-x64",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/src/Llampec.App", "-c", "Debug", "-r", "win-x64"],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

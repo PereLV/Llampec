@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Llampec WinUI (ARM64)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-arm64",
+      "program": "${workspaceFolder}/src/Llampec.App/bin/Debug/net10.0-windows10.0.26100.0/win-arm64/Llampec.exe",
+      "cwd": "${workspaceFolder}/src/Llampec.App/bin/Debug/net10.0-windows10.0.26100.0/win-arm64",
+      "console": "internalConsole"
+    },
+    {
+      "name": "Llampec WinUI (x64)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-x64",
+      "program": "${workspaceFolder}/src/Llampec.App/bin/Debug/net10.0-windows10.0.26100.0/win-x64/Llampec.exe",
+      "cwd": "${workspaceFolder}/src/Llampec.App/bin/Debug/net10.0-windows10.0.26100.0/win-x64",
+      "console": "internalConsole"
+    }
+  ]
+}

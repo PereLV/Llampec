@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType><WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <RootNamespace>Llampec</RootNamespace><AssemblyName>Llampec</AssemblyName>
+    <ApplicationIcon>Assets/Llampec.ico</ApplicationIcon><ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+    <PlatformTarget Condition="'$(RuntimeIdentifier)' == 'win-arm64'">ARM64</PlatformTarget>
+    <PlatformTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">x64</PlatformTarget>
+    <SelfContained>false</SelfContained><PublishTrimmed>false</PublishTrimmed><PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <ProjectReference Include="..\Llampec.Core\Llampec.Core.csproj" />
+    <Using Include="System.Runtime.InteropServices" />
+    <Content Include="Assets\Llampec.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- Windows App SDK's unpackaged publish path omits application PRI/XBF files.
+       Include them in the publish manifest, not just in the build output.
+       https://github.com/microsoft/WindowsAppSDK/issues/6720 -->
+  <Target Name="IncludeWinUIResourcesInPublish" AfterTargets="ComputeFilesToPublish">
+    <Error Condition="!Exists('$(OutDir)$(AssemblyName).pri')"
+           Text="The application PRI is missing. Build WinUI resources before publishing." />
+    <ItemGroup>
+      <_LlampecXbf Include="$(OutDir)**\*.xbf" />
+      <ResolvedFileToPublish Include="$(OutDir)$(AssemblyName).pri">
+        <RelativePath>$(AssemblyName).pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="@(_LlampecXbf)">
+        <RelativePath>%(_LlampecXbf.RecursiveDir)%(_LlampecXbf.Filename)%(_LlampecXbf.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+    <Error Condition="'@(_LlampecXbf)' == ''" Text="No compiled WinUI XAML was found for publication." />
+  </Target>
+</Project>
