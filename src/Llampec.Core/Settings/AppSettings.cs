@@ -17,6 +17,12 @@ public sealed class AppSettings
     public AppTheme Theme { get; set; } = AppTheme.System;
     public ThemeScheduleSettings ThemeSchedule { get; set; } = new();
     public CaffeineSettings Caffeine { get; set; } = new();
+    private AlwaysOnTopSettings _alwaysOnTop = new();
+    public AlwaysOnTopSettings AlwaysOnTop
+    {
+        get => _alwaysOnTop;
+        set => _alwaysOnTop = value ?? new();
+    }
 
     /// <summary>UI language tag ("en", "es", "ca") or null to follow Windows.</summary>
     public string? Language { get; set; }

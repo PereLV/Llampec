@@ -18,22 +18,22 @@ public readonly record struct Hotkey(uint Modifiers, uint VirtualKey)
 
         uint mods = 0;
         uint vk = 0;
-        foreach (string rawPart in text.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (string rawPart in text.Split('+', StringSplitOptions.TrimEntries))
         {
-            switch (rawPart.ToUpperInvariant())
+            uint modifier = rawPart.ToUpperInvariant() switch
             {
-                case "CTRL" or "CONTROL": mods |= User32.MOD_CONTROL; break;
-                case "ALT": mods |= User32.MOD_ALT; break;
-                case "SHIFT": mods |= User32.MOD_SHIFT; break;
-                case "WIN" or "WINDOWS": mods |= User32.MOD_WIN; break;
-                default:
-                    if (!TryParseKey(rawPart, out vk))
-                    {
-                        return false;
-                    }
-
-                    break;
+                "CTRL" or "CONTROL" => User32.MOD_CONTROL,
+                "ALT" => User32.MOD_ALT,
+                "SHIFT" => User32.MOD_SHIFT,
+                "WIN" or "WINDOWS" => User32.MOD_WIN,
+                _ => 0,
+            };
+            if (modifier != 0)
+            {
+                if ((mods & modifier) != 0) return false;
+                mods |= modifier;
             }
+            else if (vk != 0 || !TryParseKey(rawPart, out vk)) return false;
         }
 
         if (vk == 0 || mods == 0)

@@ -123,6 +123,9 @@ public static partial class User32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetForegroundWindow(nint hWnd);
 
+    [LibraryImport("user32.dll")]
+    public static partial nint GetForegroundWindow();
+
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool GetCursorPos(out POINT lpPoint);

@@ -31,6 +31,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private readonly nint _hwnd;
     private ThemeScheduleView? _scheduleView;
     private CaffeineView? _caffeineView;
+    private AlwaysOnTopView? _alwaysOnTopView;
+    private int _observedPinCount;
     private bool _closing;
     private readonly PanelMotion _motion;
     private readonly PanelAcrylicBackdrop _panelBackdrop;
@@ -178,6 +180,18 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             var caption = new StackPanel { Spacing = 2 };
             caption.Children.Add(title);
             caption.Children.Add(subtitle);
+            var pinnedCount = new TextBlock
+            {
+                FontSize = 11, TextAlignment = TextAlignment.Center,
+                Style = (Style)Root.Resources["TileStatusStyle"],
+                Visibility = Visibility.Collapsed,
+            };
+            if (tile.Id == "always-on-top")
+            {
+                subtitle.MaxLines = 2;
+                subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
+                caption.Children.Add(pinnedCount);
+            }
             var busy = new ProgressBar
             {
                 Height = 2, VerticalAlignment = VerticalAlignment.Bottom,
@@ -200,6 +214,13 @@ public sealed partial class FlyoutWindow : Window, IDisposable
                 busy.Visibility = tile.IsBusy ? Visibility.Visible : Visibility.Collapsed;
                 busy.IsIndeterminate = tile.IsBusy;
                 AutomationProperties.SetHelpText(button, tile.IsMixed ? T("Some displays are on") : tile.Subtitle ?? "");
+                if (tile.Id == "always-on-top")
+                {
+                    int count = App.Current.AlwaysOnTop?.PinnedCount ?? 0;
+                    pinnedCount.Text = UiText.Format("{0} pinned", count);
+                    pinnedCount.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                    AutomationProperties.SetHelpText(button, $"{tile.Subtitle}. {pinnedCount.Text}");
+                }
             }
             Observe(tile, Update, _unsubscribe);
             Grid.SetColumn(stack, i % 3);
@@ -245,6 +266,11 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             {
                 _caffeineView = new CaffeineView(caffeine);
                 Subpage.Children.Add(_caffeineView);
+            }
+            if (page.Id == "always-on-top" && App.Current.AlwaysOnTop is { } alwaysOnTop)
+            {
+                _alwaysOnTopView = new AlwaysOnTopView(alwaysOnTop, hold => _dialogOpen = hold);
+                Subpage.Children.Add(_alwaysOnTopView);
             }
             foreach (var tile in page.SubTiles)
             {
@@ -344,6 +370,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             return;
         }
         bool fresh = !AppWindow.IsVisible;
+        App.Current.AlwaysOnTop?.CaptureTarget();
         long started = Stopwatch.GetTimestamp();
         _idleTimer.Stop();
         _closing = false;
@@ -396,6 +423,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private void FinishHide()
     {
         AppWindow.Hide();
+        App.Current.AlwaysOnTop?.ReleaseTarget();
         App.Current.Scheduler?.SetStatusVisible(false);
         _closing = false;
         _transitioning = false;
@@ -460,6 +488,26 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         else DispatcherQueue.TryEnqueue(ShowMenu);
     }
 
+    public void OpenAlwaysOnTop()
+    {
+        if (_disposed) return;
+        ShowPanel();
+        if (_model.Tiles.FirstOrDefault(tile => tile.Id == "always-on-top") is { } tile)
+            _model.OpenSubpage(tile);
+    }
+
+    public void OnAlwaysOnTopChanged()
+    {
+        int count = App.Current.AlwaysOnTop?.PinnedCount ?? 0;
+        bool added = count > _observedPinCount;
+        _observedPinCount = count;
+        // HWND_TOPMOST raises a newly pinned target even with NOACTIVATE. Keep the
+        // active panel usable if that target covers it; never raise a background panel.
+        if (added && !_disposed && !_closing && AppWindow.IsVisible && User32.GetForegroundWindow() == _hwnd)
+            User32.SetWindowPos(_hwnd, -1, 0, 0, 0, 0,
+                User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE | 0x0200 /* NOOWNERZORDER */);
+    }
+
     private void ShowMenu()
     {
         if (_disposed || !AppWindow.IsVisible || _closing) return;
@@ -488,6 +536,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _idleTimer.Tick -= OnIdle;
         _scheduleView?.Dispose();
         _caffeineView?.Dispose();
+        _alwaysOnTopView?.Dispose();
         foreach (var unsubscribe in _unsubscribe.Concat(_subUnsubscribe)) unsubscribe();
         _model.PropertyChanged -= OnModelChanged;
         _model.CloseRequested -= OnCloseRequested;

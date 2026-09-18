@@ -22,6 +22,10 @@ public class HotkeyTests
     [InlineData("Space")]          // no modifier: would steal ordinary typing
     [InlineData("Ctrl+Alt")]       // no key
     [InlineData("Ctrl+Banana")]
+    [InlineData("Ctrl+A+B")]
+    [InlineData("Ctrl++T")]
+    [InlineData("Ctrl+T+")]
+    [InlineData("Ctrl+Control+T")]
     public void Rejects_invalid_hotkeys(string text) => Assert.False(Hotkey.TryParse(text, out _));
 
     [Fact]

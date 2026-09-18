@@ -27,6 +27,7 @@ public sealed partial class FlyoutWindow
         _subUnsubscribe.Clear();
         _scheduleView?.Dispose(); _scheduleView = null;
         _caffeineView?.Dispose(); _caffeineView = null;
+        _alwaysOnTopView?.Dispose(); _alwaysOnTopView = null;
         Subpage.Children.Clear();
     }
 
@@ -212,8 +213,26 @@ public sealed partial class FlyoutWindow
         _dialogOpen = true;
         try
         {
+            var content = new StackPanel { Spacing = 12 };
+            content.Children.Add(new TextBlock
+            {
+                Text = $"{T("Version")} {version}\n{copyright}\nMIT License",
+                TextWrapping = TextWrapping.Wrap,
+            });
+            content.Children.Add(new HyperlinkButton
+            {
+                Content = "Llampec · GitHub", NavigateUri = new Uri("https://github.com/PereLV/Llampec"),
+                Padding = new Thickness(0),
+            });
+            content.Children.Add(new TextBlock { Text = T("Acknowledgements"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            content.Children.Add(Note("Always on Top inspired by Microsoft PowerToys."));
+            content.Children.Add(new HyperlinkButton
+            {
+                Content = "Microsoft PowerToys · MIT", NavigateUri = new Uri("https://github.com/microsoft/PowerToys"),
+                Padding = new Thickness(0),
+            });
             await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme,
-                Title = T("About Llampec"), Content = $"{T("Version")} {version}\n{copyright}\nMIT License\nhttps://github.com/PereLV/Llampec",
+                Title = T("About Llampec"), Content = content,
                 CloseButtonText = T("Close") }.ShowAsync();
         }
         finally { _dialogOpen = false; }

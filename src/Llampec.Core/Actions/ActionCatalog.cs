@@ -8,11 +8,12 @@ namespace Llampec.Actions;
 /// </summary>
 public static class ActionCatalog
 {
-    public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents, Caffeine.CaffeineAction caffeine)
+    public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents, Caffeine.CaffeineAction caffeine,
+        AlwaysOnTop.AlwaysOnTopAction? alwaysOnTop = null)
     {
         ArgumentNullException.ThrowIfNull(systemEvents);
 
-        return
+        List<IQuickAction> actions =
         [
             // Real actions are added one per development step (default tile order):
             new Hdr.HdrAction(),
@@ -22,5 +23,7 @@ public static class ActionCatalog
             new Taskbar.TaskbarAutoHideAction(),
             caffeine,
         ];
+        if (alwaysOnTop is not null) actions.Add(alwaysOnTop);
+        return actions;
     }
 }

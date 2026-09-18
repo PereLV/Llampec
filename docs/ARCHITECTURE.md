@@ -10,6 +10,9 @@ SDK files included and a separate .NET Runtime requirement.
   schedule calculations, independent of the UI framework.
 - `Llampec.App`: WinUI panel, notification-area icon, global hotkey, single-instance
   activation and theme scheduler.
+- Always on Top keeps pin ownership and native borders in a UI-thread service,
+  independent of the disposable window-selector controls. Foreground and window
+  events drive state updates; borders receive their own target-specific events.
 - `Llampec.Core.Tests`: deterministic logic tests and Windows integration tests.
 
 `ActionCatalog` registers actions with stable identifiers. Preferences retain tile
@@ -65,6 +68,11 @@ and hidden cleanup. `--theme=light` or `--theme=dark` previews the selected pane
 theme on a fresh launch without changing the stored preference. If Llampec is
 already running, another launch reopens that instance; command-line preview and
 diagnostic options take effect only when starting a new process.
+
+`Llampec.exe --exit` requests a normal shutdown of the running instance, including
+restoration of session-owned pins. It does not start a panel when no instance is
+running. `tools/run.ps1` uses this path before rebuilding an active development
+instance, and stops if normal shutdown does not complete.
 
 To sample memory and CPU:
 

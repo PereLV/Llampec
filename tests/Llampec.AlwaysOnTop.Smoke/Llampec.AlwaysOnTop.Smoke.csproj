@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Llampec.AlwaysOnTop.Smoke</AssemblyName>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Llampec.Core/Llampec.Core.csproj" />
+  </ItemGroup>
+</Project>

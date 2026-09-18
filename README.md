@@ -2,8 +2,8 @@
 
 A compact Windows 11 quick-settings companion by [PereLV](https://github.com/PereLV).
 
-**0.2.0-alpha.1** is the first functional alpha baseline. Llampec lives in the
-notification area and provides six configurable quick actions:
+**0.2.0-alpha.4** builds on the first functional alpha baseline. Llampec lives in the
+notification area and provides seven configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -13,6 +13,8 @@ notification area and provides six configurable quick actions:
 - **Taskbar:** toggle automatic hiding.
 - **Caffeine:** prevent automatic sleep for a chosen duration, optionally keeping
   the display on.
+- **Always on Top:** pin the last active window, use a configurable shortcut, or
+  choose windows from a list. An optional accent-colored border has adjustable thickness.
 
 The panel uses WinUI 3, desktop acrylic and compositor animations that respect the
 Windows animation setting. Settings include Spanish, Catalan/Valencian and English,
@@ -48,6 +50,20 @@ Caffeine supports indefinite sessions, 1/2/3-hour presets and custom durations o
 exiting the application ends it; sessions are not restored on restart. Windows
 power policy may limit power requests, particularly on battery and Modern Standby.
 
+Always on Top uses **Ctrl+Alt+T** by default to pin or unpin the active window. The
+tile acts on the window used before opening Llampec; its subtitle identifies that
+target, and a separate count shows all windows pinned by Llampec. Its arrow opens
+the window selector, **Unpin all**, **Appearance** (border on/off and thickness),
+and shortcut preferences. Existing topmost windows owned by other applications
+are not taken over. Normal exit removes Llampec's pins; closing the panel does not.
+The shortcut works directly, including with ordinary application dialogs. The
+border follows standard Windows 11 rounded corners and uses a square inner border
+for maximized or snapped windows. Applications with custom window shapes may differ.
+To pin an elevated application (such as Task Manager), Llampec needs administrator
+permissions too. A permissions error offers **Restart as administrator**, using the
+normal Windows UAC prompt. After restarting, activate the target and press the
+shortcut again. Cancelling UAC leaves the current Llampec instance running.
+
 Preferences are stored in `%LOCALAPPDATA%\Llampec\settings.json`. Llampec has no
 telemetry or application-owned network requests. Location is requested only through
 the location button; Windows location providers may use the network. Saved
@@ -73,7 +89,7 @@ for either target:
 
 The script publishes Release, verifies the executable and required WinUI PRI/XBF
 resources, includes the README, license and dependency notices, and creates
-`publish/Llampec-0.2.0-alpha.1-<architecture>.zip`. It refuses to reuse an existing
+`publish/Llampec-0.2.0-alpha.4-<architecture>.zip`. It refuses to reuse an existing
 output folder. Keep the complete extracted folder together.
 
 For a development publish without packaging:
@@ -107,6 +123,8 @@ Developer documentation:
 - [Theme scheduling](docs/THEME_SCHEDULE.md)
 - [Caffeine mode](docs/CAFFEINE.md)
 - [Settings and languages](docs/SETTINGS.md)
+- [Always on Top](docs/ALWAYS_ON_TOP.md)
+- [Acknowledgements](docs/ACKNOWLEDGEMENTS.md)
 
 ## License
 
