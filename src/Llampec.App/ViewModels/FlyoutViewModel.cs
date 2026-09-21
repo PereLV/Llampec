@@ -13,7 +13,7 @@ public sealed class FlyoutViewModel : ObservableObject
     {
         var dispatcher = DispatcherQueue.GetForCurrentThread();
         var ordered = OrderAndFilter(actions, settings);
-        Tiles = ordered.Select(a => new TileViewModel(a, dispatcher, OpenSubpage, RequestClose)).ToList();
+        Tiles = ordered.Select(a => new TileViewModel(a, dispatcher, OpenSubpage, RunWithPanelHidden)).ToList();
         BackCommand = new RelayCommand(CloseSubpage);
     }
 
@@ -44,10 +44,10 @@ public sealed class FlyoutViewModel : ObservableObject
 
     public RelayCommand BackCommand { get; }
 
-    /// <summary>A tile asked for the panel to close (button actions). The window hides itself.</summary>
-    public event EventHandler? CloseRequested;
+    /// <summary>The window hides the panel, then runs the supplied button action.</summary>
+    public event Func<Func<Task>, Task>? RunWithPanelHiddenRequested;
 
-    private void RequestClose() => CloseRequested?.Invoke(this, EventArgs.Empty);
+    private Task RunWithPanelHidden(Func<Task> action) => RunWithPanelHiddenRequested?.Invoke(action) ?? action();
 
     /// <summary>Called when the panel opens: every action re-reads its state.</summary>
     public void RefreshAll()

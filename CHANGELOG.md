@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0-alpha.5 — 2026-09-21
+
+- Screenshot quick action: waits for the panel to finish hiding, then sends
+  Win+Shift+S to open Windows' native capture selector. No capture library,
+  background worker or image storage is added.
+- Optional Logitech MX settings: per-device button shortcuts, sensor DPI, native
+  wheel mode/SmartShift and independent scroll direction. Includes multiple button
+  assignments, background operation, device/power recovery and an original-state
+  journal for restoration after interrupted sessions. Selected HID++ feature code
+  is attributed to Mouser under MIT.
+- MX Master 3S over Bluetooth on Windows ARM64: the user confirmed thumb-button
+  shortcuts in the application and after a real suspend/resume cycle. Receiver
+  connections and other models remain outside the current hardware validation.
+- Windows startup follows the current portable location after a successful manual
+  launch when startup was already registered. Stale commands no longer appear as
+  enabled in Llampec; Windows' separate startup-disable choice is preserved.
+- A background launch no longer opens the panel of an already running instance.
+- Validation: 244 hardware-safe Core tests and six additional read-only
+  action-catalog integration tests passed. ARM64 and x64 builds succeeded;
+  physical Logitech checks currently cover MX Master 3S Bluetooth on ARM64.
+
 ## 0.2.0-alpha.4 — 2026-09-18
 
 - Always on Top outlines overlap the native Windows frame border instead of

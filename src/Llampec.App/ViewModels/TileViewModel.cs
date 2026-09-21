@@ -9,14 +9,15 @@ public sealed class TileViewModel : ObservableObject
 {
     private readonly DispatcherQueue _dispatcher;
     private readonly Action<TileViewModel>? _openSubpage;
-    private readonly Action? _closePanel;
+    private readonly Func<Func<Task>, Task>? _runWithPanelHidden;
+    private bool _executing;
 
-    public TileViewModel(IQuickAction action, DispatcherQueue dispatcher, Action<TileViewModel>? openSubpage, Action? closePanel, bool isRadioItem = false)
+    public TileViewModel(IQuickAction action, DispatcherQueue dispatcher, Action<TileViewModel>? openSubpage, Func<Func<Task>, Task>? runWithPanelHidden, bool isRadioItem = false)
     {
         Action = action;
         _dispatcher = dispatcher;
         _openSubpage = openSubpage;
-        _closePanel = closePanel;
+        _runWithPanelHidden = runWithPanelHidden;
         IsRadioItem = isRadioItem;
 
         ToggleCommand = new RelayCommand(Execute);
@@ -54,7 +55,7 @@ public sealed class TileViewModel : ObservableObject
     public string? GlyphBadge => Action.GlyphBadge;
     public bool HasGlyphBadge => !string.IsNullOrEmpty(Action.GlyphBadge);
     public bool IsAvailable => Action.IsAvailable;
-    public bool IsBusy => Action.IsBusy;
+    public bool IsBusy => _executing || Action.IsBusy;
     public bool IsOn => Action.State == ActionState.On;
     public bool IsMixed => Action.State == ActionState.Mixed;
     public bool IsButton => Action.Kind == ActionKind.Button;
@@ -68,25 +69,30 @@ public sealed class TileViewModel : ObservableObject
 
     private void Execute()
     {
-        if (IsButton)
-        {
-            // Like the native panel: a one-shot action closes the panel first (and "Turn off display"
-            // needs the panel gone before the screen goes dark).
-            _closePanel?.Invoke();
-        }
-
+        if (IsBusy || !IsAvailable) return;
         _ = ExecuteAndRefreshThemeAsync();
     }
 
     private async Task ExecuteAndRefreshThemeAsync()
     {
-        // Awaiting without ConfigureAwait(false) resumes on this (UI) thread, same as before.
-        await Action.ExecuteAsync(CancellationToken.None);
-
-        // A tile (e.g. "Dark mode") may have just changed the system theme. WM_SETTINGCHANGE should
-        // broadcast that, but the broadcast is best-effort, and even when it arrives this panel is the
-        // one open right now -- don't wait on it for our own repaint. Cheap no-op when nothing changed.
-        App.Current.RefreshTheme();
+        _executing = true;
+        RaiseAll();
+        try
+        {
+            // A screenshot must see the desktop after the closing animation and
+            // HWND hide, rather than capture the panel while it is still moving.
+            if (IsButton && _runWithPanelHidden is not null)
+                await _runWithPanelHidden(() => Action.ExecuteAsync(CancellationToken.None));
+            else await Action.ExecuteAsync(CancellationToken.None);
+            App.Current.RefreshTheme();
+        }
+        catch (OperationCanceledException) { } // Closing was reversed, or the app exited.
+        catch (Exception error) { Llampec.Diagnostics.Log.Warn($"Action '{Id}' could not complete: {error.Message}"); }
+        finally
+        {
+            _executing = false;
+            RaiseAll();
+        }
     }
 
     public void Refresh()

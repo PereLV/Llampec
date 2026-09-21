@@ -18,6 +18,7 @@ public sealed class SystemEvents : IDisposable
 
     private readonly User32.WndProc _wndProc; // kept alive: the OS holds a raw pointer to it
     private readonly uint _taskbarCreatedMessage;
+    private readonly nint _hidNotification;
     private bool _disposed;
 
     public SystemEvents()
@@ -59,6 +60,13 @@ public sealed class SystemEvents : IDisposable
 
         // Explorer broadcasts this after it restarts; the tray icon must be re-added.
         _taskbarCreatedMessage = User32.RegisterWindowMessage("TaskbarCreated");
+        var hidFilter = new DeviceInterfaceFilter
+        {
+            Size = (uint)Marshal.SizeOf<DeviceInterfaceFilter>(), DeviceType = 5,
+            ClassGuid = new Guid("4d1e55b2-f16f-11cf-88cb-001111000030")
+        };
+        _hidNotification = RegisterDeviceNotificationW(Handle, ref hidFilter, 0);
+        if (_hidNotification == 0) Log.Warn("HID device arrival notifications could not be registered.");
     }
 
     public nint Handle { get; }
@@ -67,6 +75,10 @@ public sealed class SystemEvents : IDisposable
     public event EventHandler? DisplayChanged;
     public event EventHandler? ClockChanged;
     public event EventHandler? Suspending;
+    public event EventHandler? Resumed;
+    /// <summary>Windows has committed to ending this session (not merely queried or cancelled shutdown).</summary>
+    public event EventHandler? SessionEnding;
+    public event EventHandler<string?>? HidDeviceChanged;
 
     /// <summary>A system setting changed (WM_SETTINGCHANGE). The argument is the section name, e.g. "ImmersiveColorSet".</summary>
     public event EventHandler<string?>? SettingChanged;
@@ -99,13 +111,29 @@ public sealed class SystemEvents : IDisposable
         {
             switch (msg)
             {
+                case 0x0016: // WM_ENDSESSION; nonzero means logoff/shutdown is committed.
+                    if (wParam != 0) SessionEnding?.Invoke(this, EventArgs.Empty);
+                    return 0;
                 case 0x001E: // WM_TIMECHANGE
                     ClockChanged?.Invoke(this, EventArgs.Empty);
                     return 0;
                 case 0x0218: // WM_POWERBROADCAST: resume from sleep/hibernate
                     if (wParam == 0x0004) Suspending?.Invoke(this, EventArgs.Empty);
-                    if (wParam is 0x0007 or 0x0012) ClockChanged?.Invoke(this, EventArgs.Empty);
+                    if (wParam is 0x0007 or 0x0012)
+                    {
+                        ClockChanged?.Invoke(this, EventArgs.Empty);
+                        // Windows sends RESUMEAUTOMATIC before a possible second
+                        // RESUMESUSPEND notification when user interaction returns.
+                        if (wParam == 0x0012) Resumed?.Invoke(this, EventArgs.Empty);
+                    }
                     return 1;
+                case 0x0219: // WM_DEVICECHANGE; registered HID arrivals/removals.
+                    if (wParam is 0x8000 or 0x8004 && lParam != 0
+                        && Marshal.ReadInt32(lParam) >= 30 && Marshal.ReadInt32(lParam, 4) == 5)
+                        HidDeviceChanged?.Invoke(this, Marshal.PtrToStringUni(lParam + 28));
+                    else if (wParam == 0x0007) // DBT_DEVNODES_CHANGED: useful while waiting for a device.
+                        HidDeviceChanged?.Invoke(this, null);
+                    return 0;
                 case User32.WM_DISPLAYCHANGE:
                     DisplayChanged?.Invoke(this, EventArgs.Empty);
                     return 0;
@@ -149,11 +177,28 @@ public sealed class SystemEvents : IDisposable
         }
 
         _disposed = true;
+        if (_hidNotification != 0) UnregisterDeviceNotification(_hidNotification);
         User32.DestroyWindow(Handle);
         // Allow a later instance (tests, or a future restart-in-place) to register the class again.
         User32.UnregisterClass(ClassName, Kernel32.GetModuleHandle(null));
         GC.KeepAlive(_wndProc);
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DeviceInterfaceFilter
+    {
+        public uint Size;
+        public uint DeviceType;
+        public uint Reserved;
+        public Guid ClassGuid;
+        public ushort Name;
+    }
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    private static extern nint RegisterDeviceNotificationW(nint recipient, ref DeviceInterfaceFilter filter, uint flags);
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterDeviceNotification(nint notification);
 }
 
 /// <summary>Tray icon callback data. <see cref="Message"/> is a WM_* mouse message or NIN_* value.</summary>

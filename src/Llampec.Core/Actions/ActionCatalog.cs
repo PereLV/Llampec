@@ -15,7 +15,6 @@ public static class ActionCatalog
 
         List<IQuickAction> actions =
         [
-            // Real actions are added one per development step (default tile order):
             new Hdr.HdrAction(),
             new DisplayOff.DisplayOffAction(systemEvents),
             new Theme.ThemeAction(),
@@ -24,6 +23,7 @@ public static class ActionCatalog
             caffeine,
         ];
         if (alwaysOnTop is not null) actions.Add(alwaysOnTop);
+        actions.Add(new Screenshot.ScreenshotAction());
         return actions;
     }
 }

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Llampec.Logitech.Probe</AssemblyName>
+    <RuntimeIdentifiers>win-arm64;win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Llampec.Core/Llampec.Core.csproj" />
+    <Content Include="../../docs/third-party/Mouser.LICENSE.txt" Link="licenses/Mouser.LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

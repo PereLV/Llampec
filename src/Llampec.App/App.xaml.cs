@@ -1,6 +1,7 @@
 using Llampec.Actions;
 using Llampec.Actions.AlwaysOnTop;
 using Llampec.Diagnostics;
+using Llampec.Devices.Logitech;
 using Llampec.Flyout;
 using Llampec.Platform;
 using Llampec.Settings;
@@ -24,11 +25,13 @@ public partial class App : Application
     private Actions.Caffeine.CaffeineAction? _caffeine;
     private AlwaysOnTopAction? _alwaysOnTopAction;
     private ConfigurableHotkey? _alwaysOnTopHotkey;
+    private readonly SemaphoreSlim _logitechSettingsGate = new(1, 1);
     public static new App Current => (App)Application.Current;
     public AppSettings Settings { get; private set; } = new();
     public AppTheme? PreviewTheme { get; private set; }
     public ThemeScheduler? Scheduler { get; private set; }
     public AlwaysOnTopService? AlwaysOnTop { get; private set; }
+    public LogitechMouseService? LogitechMouse { get; private set; }
     public string? AlwaysOnTopHotkeyError => _alwaysOnTopHotkey?.Error;
 
     public App()
@@ -47,6 +50,7 @@ public partial class App : Application
             && Enum.IsDefined(previewTheme))
             PreviewTheme = previewTheme;
         bool exitRequested = arguments.Contains("--exit", StringComparer.OrdinalIgnoreCase);
+        bool background = arguments.Contains("--background", StringComparer.OrdinalIgnoreCase);
         try
         {
             _mutex = new Mutex(true, @"Local\Llampec.SingleInstance", out bool first);
@@ -54,7 +58,7 @@ public partial class App : Application
             _exitEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Llampec.Exit");
             if (!first)
             {
-                if (exitRequested) _exitEvent.Set(); else _showEvent.Set();
+                if (exitRequested) _exitEvent.Set(); else if (!background) _showEvent.Set();
                 ExitApplication();
                 return;
             }
@@ -86,6 +90,21 @@ public partial class App : Application
             var model = new FlyoutViewModel(ActionCatalog.Create(_events, _caffeine, _alwaysOnTopAction), Settings);
             var window = new FlyoutWindow(model);
             _window = window;
+            LogitechMouse = new LogitechMouseService(shortcut =>
+            {
+                if (new KeyboardShortcut(shortcut).Send())
+                    Log.Info($"Logitech shortcut executed: {shortcut}");
+            });
+            _events.Suspending += (_, _) => LogitechMouse.Suspend();
+            _events.Resumed += (_, _) => LogitechMouse.Resume();
+            _events.SessionEnding += (_, _) => ExitApplication();
+            _events.HidDeviceChanged += (_, path) =>
+            {
+                if (LogitechMouse.Status.RecoveryPending || (path is null && !LogitechMouse.Status.Connected)
+                    || string.Equals(path, Settings.Logitech.DevicePath, StringComparison.OrdinalIgnoreCase))
+                    LogitechMouse.NotifyDeviceChange();
+            };
+            _ = StartLogitechMouseAsync();
             AlwaysOnTop.SelectionRequested += (_, _) => window.OpenAlwaysOnTop();
             AlwaysOnTop.Changed += (_, _) => window.OnAlwaysOnTopChanged();
             Scheduler = new ThemeScheduler(window.DispatcherQueue, _events);
@@ -120,8 +139,11 @@ public partial class App : Application
             Log.Info($"Llampec started: {RuntimeInformation.ProcessArchitecture}");
             // A direct launch should visibly open the app. Reserve silent tray startup
             // for an explicit startup/background invocation.
-            if (!arguments.Contains("--background", StringComparer.OrdinalIgnoreCase))
+            if (!background)
+            {
+                RefreshStartupRegistration();
                 window.DispatcherQueue.TryEnqueue(window.ShowPanel);
+            }
             else window.ScheduleIdleRelease();
         }
         catch (Exception ex)
@@ -130,6 +152,21 @@ public partial class App : Application
             Log.Error("Startup failed", ex);
             ExitApplication();
             throw;
+        }
+    }
+
+    private static void RefreshStartupRegistration()
+    {
+        try
+        {
+            if (Environment.ProcessPath is { } path
+                && new StartupRegistration(path).RefreshExistingRegistration())
+                Log.Info("Updated Windows startup registration to the current application location.");
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or ArgumentException)
+        {
+            // Failure to repair an old registration must not prevent a manual launch.
+            Log.Error("Could not update Windows startup registration to the current application location.", ex);
         }
     }
 
@@ -149,6 +186,40 @@ public partial class App : Application
     public bool IsPointerPressOnTrayIcon() => _tray?.IsPointerOverIcon() == true
         && (Llampec.Interop.User32.GetAsyncKeyState(0x01) < 0 || Llampec.Interop.User32.GetAsyncKeyState(0x02) < 0);
     public void SaveSettings() => SettingsStore.Save(Settings);
+
+    private async Task StartLogitechMouseAsync()
+    {
+        try { if (LogitechMouse is not null) await LogitechMouse.ApplyAsync(Settings.Logitech); }
+        catch (ArgumentException ex)
+        {
+            Log.Error("Logitech settings could not be activated; the rest of Llampec remains available.", ex);
+            // Invalid preferences must not prevent recovery of a previous session.
+            try { if (!_exiting && LogitechMouse is not null) await LogitechMouse.ApplyAsync(new()); }
+            catch (Exception recovery) { Log.Error("Logitech recovery remains pending.", recovery); }
+        }
+        catch (OperationCanceledException) when (_exiting) { }
+        catch (Exception ex) { Log.Error("Logitech settings could not be activated; saved preferences are retained.", ex); }
+    }
+
+    public async Task<bool> TryApplyLogitechSettingsAsync(LogitechMouseSettings preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        var next = preferences.Clone();
+        next.Validate();
+        await _logitechSettingsGate.WaitAsync();
+        try
+        {
+            if (_exiting || LogitechMouse is null) return false;
+            var previous = Settings.Logitech;
+            Settings.Logitech = next;
+            if (!SettingsStore.Save(Settings)) { Settings.Logitech = previous; return false; }
+            // Desired settings remain saved if the selected mouse is offline. The
+            // service reports status and reapplies them when that same mouse returns.
+            await LogitechMouse.ApplyAsync(next);
+            return true;
+        }
+        finally { _logitechSettingsGate.Release(); }
+    }
 
     public bool TrySetAlwaysOnTopHotkey(string text, out string? error)
     {
@@ -183,6 +254,8 @@ public partial class App : Application
         _exiting = true;
         _showWait?.Unregister(null);
         _exitWait?.Unregister(null);
+        try { LogitechMouse?.StopAsync().GetAwaiter().GetResult(); }
+        catch (Exception ex) { Log.Error("Logitech shutdown could not complete restoration; recovery is retained for the next launch.", ex); }
         Scheduler?.Dispose();
         _alwaysOnTopHotkey?.Dispose();
         _alwaysOnTopAction?.Dispose();

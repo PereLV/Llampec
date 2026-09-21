@@ -9,7 +9,7 @@ $output = Join-Path $root "publish/$name"
 if (Test-Path -LiteralPath $output) { throw "Output already exists: $output. Choose a clean publication directory." }
 dotnet publish (Join-Path $root 'src/Llampec.App') -c Release -r $RuntimeIdentifier --self-contained false -p:DebugType=None -p:DebugSymbols=false -o $output
 if ($LASTEXITCODE -ne 0) { throw 'Publication failed.' }
-& (Join-Path $PSScriptRoot 'test-publish.ps1') -PublishDirectory $output
+& (Join-Path $PSScriptRoot 'test-publish.ps1') -PublishDirectory $output -RuntimeIdentifier $RuntimeIdentifier
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'), (Join-Path $root 'README.md') -Destination $output
 Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $output -Recurse
 

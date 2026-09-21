@@ -17,6 +17,12 @@ public sealed class AppSettings
     public AppTheme Theme { get; set; } = AppTheme.System;
     public ThemeScheduleSettings ThemeSchedule { get; set; } = new();
     public CaffeineSettings Caffeine { get; set; } = new();
+    private LogitechMouseSettings _logitech = new();
+    public LogitechMouseSettings Logitech
+    {
+        get => _logitech;
+        set => _logitech = value ?? new();
+    }
     private AlwaysOnTopSettings _alwaysOnTop = new();
     public AlwaysOnTopSettings AlwaysOnTop
     {

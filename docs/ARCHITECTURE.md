@@ -14,10 +14,27 @@ SDK files included and a separate .NET Runtime requirement.
   independent of the disposable window-selector controls. Foreground and window
   events drive state updates; borders receive their own target-specific events.
 - `Llampec.Core.Tests`: deterministic logic tests and Windows integration tests.
+- The optional Logitech mouse service lives in Core and is owned by `App`, separate
+  from disposable settings controls. A single HID reader routes notifications;
+  Windows device/power events and read failures trigger reconnection. Settings
+  changes use a durable original-state record before touching hardware. See
+  [Logitech lifecycle](LOGITECH.md).
 
 `ActionCatalog` registers actions with stable identifiers. Preferences retain tile
 order and visibility by identifier. Stateful services such as caffeine and theme
 scheduling live outside page controls so that closing the panel does not stop them.
+The default catalogue has eight actions: HDR, display power, theme, projection,
+taskbar, caffeine, Always on Top and screenshot. The Logitech module is a settings
+page and background service, not another tile.
+
+One-shot actions pass their operation through `TileViewModel` and
+`FlyoutViewModel.RunWithPanelHiddenRequested`.
+`FlyoutWindow.RunWithPanelHiddenAsync` awaits `FinishHide`, checks that the native
+window remains hidden and has not reopened, then invokes the operation in the same
+UI continuation. Reopening or cancelling dismissal prevents the pending action
+from being sent. `ScreenshotAction` emits Win+Shift+S through the shared
+`Platform.KeyboardShortcut`, leaving capture and image handling to Windows.
+There is no screenshot-specific delay or recurring work. See [Screenshot](SCREENSHOT.md).
 
 ## Panel and motion
 
@@ -70,7 +87,7 @@ already running, another launch reopens that instance; command-line preview and
 diagnostic options take effect only when starting a new process.
 
 `Llampec.exe --exit` requests a normal shutdown of the running instance, including
-restoration of session-owned pins. It does not start a panel when no instance is
+restoration of session-owned pins and Logitech settings. It does not start a panel when no instance is
 running. `tools/run.ps1` uses this path before rebuilding an active development
 instance, and stops if normal shutdown does not complete.
 
@@ -89,6 +106,9 @@ Before a release, check tray/hotkey activation, Escape/outside dismissal, both
 themes, high contrast, reduced motion, disabled transparency, mixed-DPI placement,
 idle reconstruction and the published app on each supported architecture. Validate
 HDR and projection changes on appropriate physical hardware.
+HDR monitor children are currently inventoried at startup; newly attached displays
+require restarting Llampec to appear. Logitech coverage and measured costs are
+recorded separately in [its validation notes](LOGITECH.md#validation-on-2026-09-21).
 
 ## References
 

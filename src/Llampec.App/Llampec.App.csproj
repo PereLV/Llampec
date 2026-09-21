@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Llampec.Core\Llampec.Core.csproj" />
     <Using Include="System.Runtime.InteropServices" />
     <Content Include="Assets\Llampec.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/Mouser.LICENSE.txt" Link="licenses/Mouser.LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- Windows App SDK's unpackaged publish path omits application PRI/XBF files.
        Include them in the publish manifest, not just in the build output.

@@ -10,8 +10,9 @@ namespace Llampec.Flyout;
 
 public sealed partial class FlyoutWindow
 {
-    private enum UtilityPage { None, Settings, Reorder }
+    private enum UtilityPage { None, Settings, Reorder, Logitech }
     private UtilityPage _utilityPage;
+    private LogitechMouseView? _logitechMouseView;
     private static string T(string key) => UiText.Get(key);
 
     private void UpdateLanguage()
@@ -28,6 +29,7 @@ public sealed partial class FlyoutWindow
         _scheduleView?.Dispose(); _scheduleView = null;
         _caffeineView?.Dispose(); _caffeineView = null;
         _alwaysOnTopView?.Dispose(); _alwaysOnTopView = null;
+        _logitechMouseView?.Dispose(); _logitechMouseView = null;
         Subpage.Children.Clear();
     }
 
@@ -59,7 +61,7 @@ public sealed partial class FlyoutWindow
 
     private void GoBack()
     {
-        if (_utilityPage == UtilityPage.Reorder) ShowSettings();
+        if (_utilityPage is UtilityPage.Reorder or UtilityPage.Logitech) ShowSettings();
         else if (_utilityPage == UtilityPage.Settings) ShowMainPage();
         else _model.CloseSubpage();
     }
@@ -108,7 +110,7 @@ public sealed partial class FlyoutWindow
         var startup = new StartupRegistration(Environment.ProcessPath!);
         var start = new ToggleSwitch { Header = T("Start with Windows"), OnContent = T("On"), OffContent = T("Off"), Margin = new Thickness(0, 12, 0, 0) };
         try { start.IsOn = startup.IsRegistered; }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or ArgumentException)
         { start.IsEnabled = false; ErrorBar.Message = T("Could not update startup registration."); ErrorBar.IsOpen = true; }
         bool updating = false;
         start.Toggled += (_, _) =>
@@ -123,7 +125,7 @@ public sealed partial class FlyoutWindow
         };
         Subpage.Children.Add(start);
         Subpage.Children.Add(Note("Opens in the notification area when you sign in."));
-        Subpage.Children.Add(Note("Windows can also disable startup. Keep Llampec in this folder, or enable this option again after moving it."));
+        Subpage.Children.Add(Note("Windows can also disable startup. After moving Llampec, open it once to update its startup location."));
         var windowsStartup = new HyperlinkButton { Content = T("Windows startup apps"), Padding = new Thickness(0) };
         windowsStartup.Click += async (_, _) =>
         {
@@ -138,9 +140,20 @@ public sealed partial class FlyoutWindow
         var reorder = new Button { Content = T("Reorder buttons"), HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 12, 0, 0) };
         reorder.Click += (_, _) => ShowReorder();
         Subpage.Children.Add(reorder);
+        var logitech = new Button { Content = T("Logitech MX mouse"), HorizontalAlignment = HorizontalAlignment.Stretch };
+        logitech.Click += (_, _) => ShowLogitechMouse();
+        Subpage.Children.Add(logitech);
         var about = new Button { Content = T("About Llampec"), HorizontalAlignment = HorizontalAlignment.Stretch };
         about.Click += (_, _) => ShowAbout();
         Subpage.Children.Add(about);
+        Reposition();
+    }
+
+    private void ShowLogitechMouse()
+    {
+        BeginUtilityPage(UtilityPage.Logitech, "Logitech MX mouse");
+        _logitechMouseView = new LogitechMouseView(App.Current.LogitechMouse, Reposition);
+        Subpage.Children.Add(_logitechMouseView);
         Reposition();
     }
 
@@ -229,6 +242,12 @@ public sealed partial class FlyoutWindow
             content.Children.Add(new HyperlinkButton
             {
                 Content = "Microsoft PowerToys · MIT", NavigateUri = new Uri("https://github.com/microsoft/PowerToys"),
+                Padding = new Thickness(0),
+            });
+            content.Children.Add(Note("Logitech HID++ feature code adapted from Mouser."));
+            content.Children.Add(new HyperlinkButton
+            {
+                Content = "Mouser · MIT", NavigateUri = new Uri("https://github.com/TomBadash/Mouser"),
                 Padding = new Thickness(0),
             });
             await new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme,

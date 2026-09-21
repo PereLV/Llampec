@@ -2,8 +2,8 @@
 
 A compact Windows 11 quick-settings companion by [PereLV](https://github.com/PereLV).
 
-**0.2.0-alpha.4** builds on the first functional alpha baseline. Llampec lives in the
-notification area and provides seven configurable quick actions:
+**0.2.0-alpha.5** adds Logitech MX controls and a screenshot action. Llampec lives in
+the notification area and provides eight configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -15,6 +15,14 @@ notification area and provides seven configurable quick actions:
   the display on.
 - **Always on Top:** pin the last active window, use a configurable shortcut, or
   choose windows from a list. An optional accent-colored border has adjustable thickness.
+- **Screenshot:** close the panel, then open the native Windows capture selector
+  with **Win+Shift+S**.
+
+Settings also includes an optional **Logitech MX** module: assign keyboard shortcuts
+to supported mouse buttons (including the thumb button), adjust sensor DPI and
+configure native wheel mode, SmartShift and scroll direction. It keeps working
+with the panel closed and reconnects to the selected mouse. See
+[Logitech setup and recovery](docs/LOGITECH.md) for scope and hardware coverage.
 
 The panel uses WinUI 3, desktop acrylic and compositor animations that respect the
 Windows animation setting. Settings include Spanish, Catalan/Valencian and English,
@@ -44,6 +52,18 @@ fixed hours or sunrise/sunset and select **Apply**. Solar scheduling accepts man
 coordinates or an explicit **Use current location** request. Llampec must remain
 running for scheduled changes; it does not wake the computer. A manual theme change
 lasts until the next scheduled transition.
+
+**Screenshot** waits until Llampec's panel is hidden before sending **Win+Shift+S**,
+so its panel is not part of the selection. Windows handles the capture selector,
+clipboard and subsequent editing or saving. Llampec does not store or upload the
+image. See [screenshot behavior](docs/SCREENSHOT.md).
+
+For Logitech MX, open **Settings → Logitech MX mouse**, find and select the mouse,
+enable the module, then assign shortcuts and press **Apply**. DPI and wheel settings
+are optional. The selected device's advertised capabilities determine what is
+available; other mice retain their behavior. Disabling the module or exiting normally
+restores the settings Llampec changed. [Setup and recovery](docs/LOGITECH.md) explains
+connection recovery and the hardware combinations tested.
 
 Caffeine supports indefinite sessions, 1/2/3-hour presets and custom durations of
 1–1440 minutes. Closing the panel keeps the session active. Expiry, manual sleep or
@@ -89,7 +109,7 @@ for either target:
 
 The script publishes Release, verifies the executable and required WinUI PRI/XBF
 resources, includes the README, license and dependency notices, and creates
-`publish/Llampec-0.2.0-alpha.4-<architecture>.zip`. It refuses to reuse an existing
+`publish/Llampec-0.2.0-alpha.5-<architecture>.zip`. It refuses to reuse an existing
 output folder. Keep the complete extracted folder together.
 
 For a development publish without packaging:
@@ -113,6 +133,16 @@ The excluded integration tests inspect the real Windows session, and
 `ProjectionModesTests` reapplies the current display topology. Run those tests
 explicitly on suitable hardware.
 
+Validation on 2026-09-21: 244 tests passed with that filter, plus six read-only
+action-catalog integration tests on the local Windows session (250 in total).
+Hardware and manual coverage are recorded in the feature documents below.
+
+HDR's per-monitor list is captured at startup. Restart Llampec after connecting a
+new monitor to add it to that list; unplugged monitors are disabled. ARM64 and x64
+packages are built separately. Current Logitech hardware coverage is MX Master 3S
+over Bluetooth on Windows ARM64; receiver connections and other MX models need
+their own checks.
+
 `--diagnostics` enables a local log for the session. `--theme=dark` or `--theme=light`
 previews a panel theme on a fresh launch without changing the saved preference.
 See [architecture and diagnostic options](docs/ARCHITECTURE.md) for details.
@@ -124,6 +154,9 @@ Developer documentation:
 - [Caffeine mode](docs/CAFFEINE.md)
 - [Settings and languages](docs/SETTINGS.md)
 - [Always on Top](docs/ALWAYS_ON_TOP.md)
+- [Screenshot](docs/SCREENSHOT.md)
+- [Logitech MX diagnostic probe](docs/LOGITECH_PROTOTYPE.md)
+- [Logitech MX settings and service](docs/LOGITECH.md)
 - [Acknowledgements](docs/ACKNOWLEDGEMENTS.md)
 
 ## License

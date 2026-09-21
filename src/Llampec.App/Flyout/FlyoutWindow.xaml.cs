@@ -37,6 +37,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private readonly PanelMotion _motion;
     private readonly PanelAcrylicBackdrop _panelBackdrop;
     private readonly DispatcherQueueTimer _idleTimer;
+    private TaskCompletionSource? _panelHidden;
+    private int _showVersion;
     private int _idleStage;
     private bool _transitioning;
     private bool _placementPending;
@@ -76,7 +78,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         Root.Loaded += (_, _) => Reposition();
         Tiles.SizeChanged += OnPageSizeChanged;
         Subpage.SizeChanged += OnPageSizeChanged;
-        model.CloseRequested += OnCloseRequested;
+        model.RunWithPanelHiddenRequested += RunWithPanelHiddenAsync;
         model.PropertyChanged += OnModelChanged;
         Activated += (_, e) =>
         {
@@ -362,6 +364,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     public void ShowPanel()
     {
         if (_disposed) return;
+        ++_showVersion;
         // Repeated show requests must not snap an entry animation to its endpoint.
         if (AppWindow.IsVisible && !_closing)
         {
@@ -370,6 +373,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             return;
         }
         bool fresh = !AppWindow.IsVisible;
+        _panelHidden?.TrySetCanceled();
+        _panelHidden = null;
         App.Current.AlwaysOnTop?.CaptureTarget();
         long started = Stopwatch.GetTimestamp();
         _idleTimer.Stop();
@@ -429,6 +434,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _transitioning = false;
         ShowMainPage();
         ScheduleIdleRelease();
+        _panelHidden?.TrySetResult();
+        _panelHidden = null;
     }
 
     public void ScheduleIdleRelease()
@@ -464,7 +471,20 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         if (!Kernel32.EmptyWorkingSet(-1)) Log.Warn("Could not trim the idle working set.");
     }
 
-    private void OnCloseRequested(object? sender, EventArgs e) => HidePanel();
+    private async Task RunWithPanelHiddenAsync(Func<Task> action)
+    {
+        if (_disposed) return;
+        int version = _showVersion;
+        if (AppWindow.IsVisible)
+        {
+            var completion = _panelHidden ??= new(TaskCreationOptions.RunContinuationsAsynchronously);
+            HidePanel();
+            await completion.Task;
+        }
+        // Check and invoke on the UI thread without another continuation between
+        // them: reopening the panel cancels a capture even after the hide completed.
+        if (!_disposed && !AppWindow.IsVisible && version == _showVersion) await action();
+    }
     private void OnStagePointerPressed(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(Surface).Position;
@@ -530,6 +550,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _panelHidden?.TrySetCanceled();
+        _panelHidden = null;
         AppWindow.Hide();
         _motion.Dispose();
         _idleTimer.Stop();
@@ -537,9 +559,10 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _scheduleView?.Dispose();
         _caffeineView?.Dispose();
         _alwaysOnTopView?.Dispose();
+        _logitechMouseView?.Dispose();
         foreach (var unsubscribe in _unsubscribe.Concat(_subUnsubscribe)) unsubscribe();
         _model.PropertyChanged -= OnModelChanged;
-        _model.CloseRequested -= OnCloseRequested;
+        _model.RunWithPanelHiddenRequested -= RunWithPanelHiddenAsync;
         Root.ActualThemeChanged -= OnActualThemeChanged;
         Tiles.SizeChanged -= OnPageSizeChanged;
         Subpage.SizeChanged -= OnPageSizeChanged;

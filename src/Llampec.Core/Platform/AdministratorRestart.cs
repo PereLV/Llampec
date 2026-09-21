@@ -59,7 +59,10 @@ public static class AdministratorRestart
             using var previous = Process.GetProcessById(id);
             if (!string.Equals(previous.MainModule?.FileName, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
                 return false;
-            return previous.WaitForExit(10000);
+            // Cancelling an in-flight HID change can require its bounded rollback
+            // followed by durable mouse restoration. Allow both cleanup budgets
+            // (12 s + 8 s) before the elevated replacement acquires the mutex.
+            return previous.WaitForExit(30000);
         }
         catch (ArgumentException) { return true; } // Already exited after approving the UAC prompt.
         catch (InvalidOperationException) { return true; }
