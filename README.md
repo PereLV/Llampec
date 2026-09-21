@@ -2,8 +2,9 @@
 
 A compact Windows 11 quick-settings companion by [PereLV](https://github.com/PereLV).
 
-**0.2.0-alpha.5** adds Logitech MX controls and a screenshot action. Llampec lives in
-the notification area and provides eight configurable quick actions:
+**0.2.0-alpha.6** includes Logitech MX controls and a screenshot action with a
+dotted selection-frame icon. Llampec lives in the notification area and provides
+eight configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -109,7 +110,7 @@ for either target:
 
 The script publishes Release, verifies the executable and required WinUI PRI/XBF
 resources, includes the README, license and dependency notices, and creates
-`publish/Llampec-0.2.0-alpha.5-<architecture>.zip`. It refuses to reuse an existing
+`publish/Llampec-0.2.0-alpha.6-<architecture>.zip`. It refuses to reuse an existing
 output folder. Keep the complete extracted folder together.
 
 For a development publish without packaging:

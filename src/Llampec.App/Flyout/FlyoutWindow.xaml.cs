@@ -134,7 +134,12 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             face.ColumnDefinitions.Add(new ColumnDefinition());
             if (tile.HasSubpage) face.ColumnDefinitions.Add(new ColumnDefinition());
             var glyph = new Grid();
-            glyph.Children.Add(tile.Id == "display-off" ? DisplayOffIcon() : Icon(tile.Glyph));
+            glyph.Children.Add(tile.Id switch
+            {
+                "display-off" => DisplayOffIcon(),
+                "screenshot" => ScreenshotIcon(),
+                _ => Icon(tile.Glyph),
+            });
             if (tile.HasGlyphBadge)
             {
                 var badge = Icon(tile.GlyphBadge!, 10);
@@ -229,6 +234,28 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             Grid.SetRow(stack, i / 3);
             Tiles.Children.Add(stack);
         }
+    }
+
+    private static PathIcon ScreenshotIcon()
+    {
+        var selection = new GeometryGroup();
+        // Three rounded corners and a plus at the bottom right.
+        selection.Children.Add((Geometry)Microsoft.UI.Xaml.Markup.XamlBindingHelper.ConvertValue(typeof(Geometry),
+            "M 2,6 A 4,4 0 0 1 6,2 A 1,1 0 0 1 6,4 A 2,2 0 0 0 4,6 A 1,1 0 0 1 2,6 Z " +
+            "M 16,2 A 4,4 0 0 1 20,6 A 1,1 0 0 1 18,6 A 2,2 0 0 0 16,4 A 1,1 0 0 1 16,2 Z " +
+            "M 2,16 A 1,1 0 0 1 4,16 A 2,2 0 0 0 6,18 A 1,1 0 0 1 6,20 A 4,4 0 0 1 2,16 Z " +
+            "M 18,16 A 1,1 0 0 1 20,16 L 20,18 L 22,18 A 1,1 0 0 1 22,20 L 20,20 L 20,22 " +
+            "A 1,1 0 0 1 18,22 L 18,20 L 16,20 A 1,1 0 0 1 16,18 L 18,18 Z"));
+        foreach (double position in new[] { 8.5, 11, 13.5 })
+        {
+            foreach (var center in new[]
+            {
+                new Windows.Foundation.Point(position, 3), new Windows.Foundation.Point(3, position),
+                new Windows.Foundation.Point(position, 19), new Windows.Foundation.Point(19, position),
+            })
+                selection.Children.Add(new EllipseGeometry { Center = center, RadiusX = 1, RadiusY = 1 });
+        }
+        return new PathIcon { Width = 24, Height = 24, Data = selection };
     }
 
     private static PathIcon DisplayOffIcon() => new()

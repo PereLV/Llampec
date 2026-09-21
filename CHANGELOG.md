@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-alpha.6 — 2026-09-21
+
+- Screenshot now uses a dotted selection frame with rounded corners and a plus
+  sign. The vector icon follows the button foreground in light, dark and
+  high-contrast themes. Screenshot behavior is unchanged.
+- Updated documentation and portable ARM64/x64 packages.
+
 ## 0.2.0-alpha.5 — 2026-09-21
 
 - Screenshot quick action: waits for the panel to finish hiding, then sends
