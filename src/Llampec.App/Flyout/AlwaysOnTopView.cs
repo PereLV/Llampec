@@ -86,7 +86,7 @@ public sealed class AlwaysOnTopView : StackPanel, IDisposable
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var refresh = new Button
         {
-            Content = new FontIcon { Glyph = "\uE72C", FontSize = 16 },
+            Content = ActionIcons.Glyph("\uE72C", 16),
         };
         AutomationProperties.SetName(refresh, UiText.Get("Refresh windows"));
         ToolTipService.SetToolTip(refresh, UiText.Get("Refresh windows"));
@@ -308,7 +308,7 @@ public sealed class AlwaysOnTopView : StackPanel, IDisposable
         };
         public FontIcon Pin { get; } = new()
         {
-            Glyph = "\uE718", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 14,
+            Glyph = "\uE718", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 16,
             Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
         };
 

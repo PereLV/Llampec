@@ -29,6 +29,7 @@ public sealed partial class FlyoutWindow
         _scheduleView?.Dispose(); _scheduleView = null;
         _caffeineView?.Dispose(); _caffeineView = null;
         _alwaysOnTopView?.Dispose(); _alwaysOnTopView = null;
+        _rotationView?.Dispose(); _rotationView = null;
         _logitechMouseView?.Dispose(); _logitechMouseView = null;
         Subpage.Children.Clear();
     }
@@ -167,7 +168,7 @@ public sealed partial class FlyoutWindow
         foreach (var tile in _model.Tiles)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-            row.Children.Add(Icon("\uE700", 14));
+            row.Children.Add(Icon("\uE700", 16));
             row.Children.Add(new TextBlock { Text = tile.Title, FontSize = 14, VerticalAlignment = VerticalAlignment.Center });
             var item = new ListViewItem { Content = row, Tag = tile.Id, MinHeight = 44 };
             AutomationProperties.SetName(item, tile.Title);

@@ -1,5 +1,6 @@
 using Llampec.Actions;
 using Llampec.Actions.AlwaysOnTop;
+using Llampec.Actions.Rotation;
 using Llampec.Diagnostics;
 using Llampec.Devices.Logitech;
 using Llampec.Flyout;
@@ -24,6 +25,7 @@ public partial class App : Application
     private bool _exiting;
     private Actions.Caffeine.CaffeineAction? _caffeine;
     private AlwaysOnTopAction? _alwaysOnTopAction;
+    private RotationAction? _rotationAction;
     private ConfigurableHotkey? _alwaysOnTopHotkey;
     private readonly SemaphoreSlim _logitechSettingsGate = new(1, 1);
     public static new App Current => (App)Application.Current;
@@ -32,6 +34,7 @@ public partial class App : Application
     public ThemeScheduler? Scheduler { get; private set; }
     public AlwaysOnTopService? AlwaysOnTop { get; private set; }
     public LogitechMouseService? LogitechMouse { get; private set; }
+    public DisplayOrientationService? Rotation { get; private set; }
     public string? AlwaysOnTopHotkeyError => _alwaysOnTopHotkey?.Error;
 
     public App()
@@ -85,11 +88,42 @@ public partial class App : Application
             AlwaysOnTop = new AlwaysOnTopService(() => Settings.AlwaysOnTop);
             _alwaysOnTopAction = new AlwaysOnTopAction(AlwaysOnTop);
             _caffeine = new Actions.Caffeine.CaffeineAction(() => Settings.Caffeine ?? new());
+            Rotation = new DisplayOrientationService();
+            _rotationAction = new RotationAction(Rotation);
             _events.Suspending += (_, _) => _caffeine.Stop();
             _events.ClockChanged += (_, _) => _caffeine.Refresh();
-            var model = new FlyoutViewModel(ActionCatalog.Create(_events, _caffeine, _alwaysOnTopAction), Settings);
+            var model = new FlyoutViewModel(ActionCatalog.Create(_events, _caffeine, _alwaysOnTopAction, _rotationAction), Settings);
             var window = new FlyoutWindow(model);
             _window = window;
+            // Display topology, rotation policy and posture can change with the panel open.
+            // Coalesce native broadcasts instead of periodically polling the desktop.
+            bool environmentRefreshQueued = false;
+            void QueueEnvironmentRefresh()
+            {
+                if (_exiting || environmentRefreshQueued) return;
+                environmentRefreshQueued = true;
+                if (!window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    environmentRefreshQueued = false;
+                    if (_exiting) return;
+                    try
+                    {
+                        Rotation.Refresh();
+                        foreach (var tile in model.Tiles.Where(t => t.Id is "taskbar-autohide" or "touch-taskbar")) tile.Refresh();
+                        window.OnDisplayEnvironmentChanged();
+                    }
+                    catch (Exception error) { Log.Warn($"Could not refresh tablet/display state: {error.Message}"); }
+                })) environmentRefreshQueued = false;
+            }
+            _events.SettingChanged += (_, _) => QueueEnvironmentRefresh();
+            _events.DisplayChanged += (_, _) => QueueEnvironmentRefresh();
+            _events.Resumed += (_, _) => QueueEnvironmentRefresh();
+            _events.TaskbarCreated += (_, _) => QueueEnvironmentRefresh();
+            if (model.Tiles.FirstOrDefault(t => t.Id == "touch-taskbar") is { } touchTaskbar)
+                touchTaskbar.Action.Changed += (_, _) => window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_exiting) model.Tiles.FirstOrDefault(t => t.Id == "taskbar-autohide")?.Refresh();
+                });
             LogitechMouse = new LogitechMouseService(shortcut =>
             {
                 if (new KeyboardShortcut(shortcut).Send())
@@ -248,12 +282,16 @@ public partial class App : Application
         return true;
     }
 
-    public void ExitApplication()
+    public async void ExitApplication()
     {
         if (_exiting) return;
         _exiting = true;
         _showWait?.Unregister(null);
         _exitWait?.Unregister(null);
+        // Keep the dispatcher pumping: display restoration broadcasts native messages.
+        try { if (Rotation is { } rotation) await rotation.DisposeAsync(); }
+        catch (Exception ex) { Log.Error("Could not complete pending display recovery on exit.", ex); }
+        _rotationAction?.Dispose();
         try { LogitechMouse?.StopAsync().GetAwaiter().GetResult(); }
         catch (Exception ex) { Log.Error("Logitech shutdown could not complete restoration; recovery is retained for the next launch.", ex); }
         Scheduler?.Dispose();

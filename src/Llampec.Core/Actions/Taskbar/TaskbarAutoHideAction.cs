@@ -1,14 +1,29 @@
 using Llampec.Interop;
+using Llampec.Platform;
 
 namespace Llampec.Actions.Taskbar;
 
 /// <summary>
 /// "Auto-hide taskbar": the same switch as Settings &gt; Personalization &gt; Taskbar &gt; "Automatically hide
-/// the taskbar", driven through SHAppBarMessage (ABM_GETSTATE / ABM_SETSTATE). Explorer applies the change
-/// immediately and persists it itself, so there is nothing to write to the registry.
+/// the taskbar", driven through SHAppBarMessage (ABM_GETSTATE / ABM_SETSTATE). The conventional setting
+/// does not control the tablet-optimized taskbar, so only the normal taskbar permits writes. Explorer
+/// owns persistence; Llampec does not write taskbar preferences to the registry.
 /// </summary>
 public sealed class TaskbarAutoHideAction : QuickActionBase
 {
+    private readonly Func<TaskbarMode> _readMode;
+    private readonly Func<uint> _readState;
+    private readonly Action<uint> _writeState;
+
+    public TaskbarAutoHideAction() : this(TabletTaskbar.ReadMode, GetState, SetState) { }
+
+    public TaskbarAutoHideAction(Func<TaskbarMode> readMode, Func<uint> readState, Action<uint> writeState)
+    {
+        _readMode = readMode ?? throw new ArgumentNullException(nameof(readMode));
+        _readState = readState ?? throw new ArgumentNullException(nameof(readState));
+        _writeState = writeState ?? throw new ArgumentNullException(nameof(writeState));
+    }
+
     public override string Id => "taskbar-autohide";
     public override string Title => "Auto-hide taskbar";
     public override string Glyph => "\uE90E"; // DockBottom
@@ -16,15 +31,32 @@ public sealed class TaskbarAutoHideAction : QuickActionBase
 
     public override void Refresh()
     {
-        State = (GetState() & Shell32.ABS_AUTOHIDE) != 0 ? ActionState.On : ActionState.Off;
+        State = (_readState() & Shell32.ABS_AUTOHIDE) != 0 ? ActionState.On : ActionState.Off;
+        ApplyMode(_readMode());
     }
 
     protected override Task ExecuteCoreAsync(CancellationToken cancellationToken)
     {
-        uint state = GetState();
+        cancellationToken.ThrowIfCancellationRequested();
+        uint state = _readState();
+        // A posture/setting change can occur after the tile's last refresh. Recheck immediately before
+        // writing so a still-enabled control cannot change a preference ineffective in tablet mode.
+        ApplyMode(_readMode());
+        if (!IsAvailable) return Task.CompletedTask;
         bool enable = (state & Shell32.ABS_AUTOHIDE) == 0;
-        SetState(enable ? state | Shell32.ABS_AUTOHIDE : state & ~Shell32.ABS_AUTOHIDE);
+        _writeState(enable ? state | Shell32.ABS_AUTOHIDE : state & ~Shell32.ABS_AUTOHIDE);
         return Task.CompletedTask;
+    }
+
+    private void ApplyMode(TaskbarMode mode)
+    {
+        IsAvailable = mode == TaskbarMode.Normal;
+        Subtitle = mode switch
+        {
+            TaskbarMode.Normal => null,
+            TaskbarMode.TabletOptimized => "Tablet taskbar active",
+            _ => "Taskbar mode unavailable",
+        };
     }
 
     /// <summary>Current ABS_* flags of the taskbar.</summary>
@@ -45,7 +77,7 @@ public sealed class TaskbarAutoHideAction : QuickActionBase
     private static Shell32.APPBARDATA NewData() => new()
     {
         cbSize = (uint)Marshal.SizeOf<Shell32.APPBARDATA>(),
-        // Documented as unused for GETSTATE/SETSTATE, but the shell is happier with the taskbar's own HWND.
+        // SETSTATE requires the taskbar window handle.
         hWnd = User32.FindWindow("Shell_TrayWnd", null),
     };
 }

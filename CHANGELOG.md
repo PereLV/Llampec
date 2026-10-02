@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.2.0-alpha.7 — 2026-10-02
+
+- Add a Touch taskbar toggle for Windows' touch-optimization preference, with
+  verified read-back, external-change refresh and explicit unavailable states.
+- Add Rotation lock with the internal display selected by default, a dynamic
+  display selector and four visual screen/AB orientation choices in a 2-by-2 grid.
+  Orientation is applied and saved immediately, without a confirmation countdown.
+  Failed operations retain conditional recovery across panel closure and respect
+  newer external display changes.
+- Keep AB lettering parallel to the screen's short edge in portrait cards, with
+  flipped choices upside down. Report failures when opening Windows display settings.
+- Allow manual orientation while Windows pauses automatic rotation for an attached
+  keyboard, dock or multiple-monitor configuration; the automatic-rotation lock
+  control continues to follow Windows' availability restrictions.
+- Disable automatic taskbar hiding while the tablet-optimized taskbar is inferred
+  active, showing the reason without changing the saved auto-hide preference.
+  Refresh availability on posture/settings changes, resume and Explorer restart;
+  recheck before applying a change. Unknown configurations have a separate status.
+- Keep the panel on its opening monitor during rotation and reserve the
+  shell-reported touch taskbar bounds so its expanded state cannot cover the footer.
+- Refine the screenshot icon to four separated dashes, round the display-power
+  icon, and standardize Fluent glyphs, optical alignment and navigation sizes.
+  Scale the complete 24-unit vector geometry to 20 DIP so the monitor edge, stand
+  and screenshot plus are no longer clipped.
+- Defer the global touch-mode experiment to a future version at the user's request.
+  It is separate from the touch-taskbar preference and does not block this release.
+- Save orientation with the normal apply-and-save operation: on this Surface,
+  the no-reset variant reported success but its saved-mode read-back stayed stale.
+  Failure recovery restores separately saved and active modes when they differ.
+- Validation: 386 hardware-safe Core tests passed, including 82 rotation cases;
+  ARM64 and x64 builds completed without errors or warnings. Computer Use verified
+  the final portrait lettering in light mode and the Windows display-settings link.
+  Real manual rotation with an attached keyboard applied and saved portrait, then
+  restored landscape without changing Windows' rotation flags. Earlier checks
+  covered light/dark icon colors and persistence beyond 15 seconds and a normal
+  app exit/relaunch. Keyboard transitions, sensor reliability, external-display
+  and suspend/resume coverage remain pending.
+
 ## 0.2.0-alpha.6 — 2026-09-21
 
 - Screenshot now uses a dotted selection frame with rounded corners and a plus

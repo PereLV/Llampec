@@ -9,7 +9,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using VirtualKey = Windows.System.VirtualKey;
 using System.Diagnostics;
@@ -32,6 +31,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private ThemeScheduleView? _scheduleView;
     private CaffeineView? _caffeineView;
     private AlwaysOnTopView? _alwaysOnTopView;
+    private RotationView? _rotationView;
     private int _observedPinCount;
     private bool _closing;
     private readonly PanelMotion _motion;
@@ -45,6 +45,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private bool _showMenuAfterOpen;
     private float _slideDistance;
     private User32.POINT _anchor;
+    private nint _anchorMonitor;
     private bool _hasAnchor;
     private readonly UISettings _uiSettings = new();
 
@@ -84,7 +85,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         {
             // A mouse-down on our tray icon deactivates us BEFORE NIN_SELECT arrives.
             // Let that callback toggle once, rather than hiding here and reopening there.
-            if (e.WindowActivationState == WindowActivationState.Deactivated && !_dialogOpen)
+            if (e.WindowActivationState == WindowActivationState.Deactivated && !_dialogOpen
+                && !_model.Tiles.Any(t => t.Id == "rotation" && t.IsBusy))
             {
                 bool trayPress = App.Current.IsPointerPressOnTrayIcon();
                 Log.Info($"Panel deactivated: trayPress={trayPress}");
@@ -120,7 +122,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         Dwm.SetUInt(_hwnd, Dwm.DWMWA_BORDER_COLOR, Dwm.DWMWA_COLOR_NONE);
     }
 
-    private static FontIcon Icon(string glyph, double size = 20) => new() { Glyph = glyph, FontSize = size };
+    private static FontIcon Icon(string glyph, double size = 20) => ActionIcons.Glyph(glyph, size);
 
     private void BuildTiles()
     {
@@ -133,21 +135,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             var face = new Grid();
             face.ColumnDefinitions.Add(new ColumnDefinition());
             if (tile.HasSubpage) face.ColumnDefinitions.Add(new ColumnDefinition());
-            var glyph = new Grid();
-            glyph.Children.Add(tile.Id switch
-            {
-                "display-off" => DisplayOffIcon(),
-                "screenshot" => ScreenshotIcon(),
-                _ => Icon(tile.Glyph),
-            });
-            if (tile.HasGlyphBadge)
-            {
-                var badge = Icon(tile.GlyphBadge!, 10);
-                badge.HorizontalAlignment = HorizontalAlignment.Right;
-                badge.VerticalAlignment = VerticalAlignment.Bottom;
-                badge.Margin = new Thickness(18, 14, 0, 0);
-                glyph.Children.Add(badge);
-            }
+            var glyph = ActionIcons.Tile(tile.Id, tile.Glyph, tile.GlyphBadge);
             ButtonBase button = tile.IsButton ? new Button() : new ToggleButton();
             button.Content = glyph;
             button.Height = 48;
@@ -163,7 +151,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             {
                 more = new Button
                 {
-                    Content = Icon("\uE76C", 12), Padding = new Thickness(0), Height = 48,
+                    Content = Icon("\uE76C", 16), Padding = new Thickness(0), Height = 48,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     CornerRadius = new CornerRadius(0, 6, 6, 0), BorderThickness = new Thickness(0, 1, 1, 1),
                 };
@@ -236,35 +224,6 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         }
     }
 
-    private static PathIcon ScreenshotIcon()
-    {
-        var selection = new GeometryGroup();
-        // Three rounded corners and a plus at the bottom right.
-        selection.Children.Add((Geometry)Microsoft.UI.Xaml.Markup.XamlBindingHelper.ConvertValue(typeof(Geometry),
-            "M 2,6 A 4,4 0 0 1 6,2 A 1,1 0 0 1 6,4 A 2,2 0 0 0 4,6 A 1,1 0 0 1 2,6 Z " +
-            "M 16,2 A 4,4 0 0 1 20,6 A 1,1 0 0 1 18,6 A 2,2 0 0 0 16,4 A 1,1 0 0 1 16,2 Z " +
-            "M 2,16 A 1,1 0 0 1 4,16 A 2,2 0 0 0 6,18 A 1,1 0 0 1 6,20 A 4,4 0 0 1 2,16 Z " +
-            "M 18,16 A 1,1 0 0 1 20,16 L 20,18 L 22,18 A 1,1 0 0 1 22,20 L 20,20 L 20,22 " +
-            "A 1,1 0 0 1 18,22 L 18,20 L 16,20 A 1,1 0 0 1 16,18 L 18,18 Z"));
-        foreach (double position in new[] { 8.5, 11, 13.5 })
-        {
-            foreach (var center in new[]
-            {
-                new Windows.Foundation.Point(position, 3), new Windows.Foundation.Point(3, position),
-                new Windows.Foundation.Point(position, 19), new Windows.Foundation.Point(19, position),
-            })
-                selection.Children.Add(new EllipseGeometry { Center = center, RadiusX = 1, RadiusY = 1 });
-        }
-        return new PathIcon { Width = 24, Height = 24, Data = selection };
-    }
-
-    private static PathIcon DisplayOffIcon() => new()
-    {
-        Width = 24, Height = 24,
-        // One filled vector: a monitor and a power switch contained inside its screen.
-        Data = (Geometry)Microsoft.UI.Xaml.Markup.XamlBindingHelper.ConvertValue(typeof(Geometry),
-            "F0 M 2,3 L 22,3 L 22,18 L 13,18 L 13,20 L 17,20 L 17,22 L 7,22 L 7,20 L 11,20 L 11,18 L 2,18 Z M 3.5,4.5 L 3.5,16.5 L 20.5,16.5 L 20.5,4.5 Z M 11.25,6 L 12.75,6 L 12.75,10.5 L 11.25,10.5 Z M 9,7.5 A 4.5,4.5 0 1 0 15,7.5 L 14,8.7 A 3,3 0 1 1 10,8.7 Z"),
-    };
     private static void Observe(TileViewModel tile, Action update, List<Action> subscriptions)
     {
         PropertyChangedEventHandler handler = (_, _) => update();
@@ -300,6 +259,11 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             {
                 _alwaysOnTopView = new AlwaysOnTopView(alwaysOnTop, hold => _dialogOpen = hold);
                 Subpage.Children.Add(_alwaysOnTopView);
+            }
+            if (page.Id == "rotation" && App.Current.Rotation is { } rotation)
+            {
+                _rotationView = new RotationView(rotation, hold => _dialogOpen = hold);
+                Subpage.Children.Add(_rotationView);
             }
             foreach (var tile in page.SubTiles)
             {
@@ -345,7 +309,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         if (_transitioning) { _placementPending = true; return; }
         _placementPending = false;
         // Keep the opening monitor even if the pointer moves during layout/animation.
-        var (work, scale) = User32.GetMonitorWorkAreaAt(_anchor);
+        var (work, scale) = PlacementArea();
         int margin = (int)Math.Round(12 * scale);
         int visibleWidth = Math.Min((int)Math.Round(360 * scale), Math.Max(1, work.Width - 2 * margin));
         int width = visibleWidth + 2 * margin;
@@ -365,12 +329,48 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     {
         User32.GetCursorPos(out _anchor);
         _hasAnchor = true;
-        var (work, scale) = User32.GetMonitorWorkAreaAt(_anchor);
+        _anchorMonitor = User32.MonitorFromPoint(_anchor, User32.MONITOR_DEFAULTTONEAREST);
+        var (work, scale) = PlacementArea();
         // Adopt the target DPI before measuring. The entire host remains within
         // this work area throughout animation, even with vertically stacked screens.
         if (User32.GetDpiForWindow(_hwnd) != (uint)Math.Round(96 * scale))
             AppWindow.Move(new PointInt32(work.Left, work.Top));
         Log.Info($"Panel placement: dpi={User32.GetDpiForWindow(_hwnd)}; scale={scale}; transparent host");
+    }
+
+    private (User32.RECT WorkArea, double Scale) PlacementArea()
+    {
+        // Rotation can move the original cursor point onto a different display.
+        // Keep the opening monitor while it exists, then fall back to the nearest.
+        var info = new User32.MONITORINFOEXW { cbSize = (uint)Marshal.SizeOf<User32.MONITORINFOEXW>() };
+        if (_anchorMonitor == 0 || !User32.GetMonitorInfo(_anchorMonitor, ref info))
+        {
+            _anchorMonitor = User32.MonitorFromPoint(_anchor, User32.MONITOR_DEFAULTTONEAREST);
+            if (!User32.GetMonitorInfo(_anchorMonitor, ref info)) return User32.GetMonitorWorkAreaAt(_anchor);
+        }
+        _anchor.X = Math.Clamp(_anchor.X, info.rcMonitor.Left, Math.Max(info.rcMonitor.Left, info.rcMonitor.Right - 1));
+        _anchor.Y = Math.Clamp(_anchor.Y, info.rcMonitor.Top, Math.Max(info.rcMonitor.Top, info.rcMonitor.Bottom - 1));
+        double scale = User32.GetDpiForMonitor(_anchorMonitor, 0, out uint dpiX, out _) == 0 ? dpiX / 96.0 : 1.0;
+        var work = info.rcWork;
+        if (Llampec.Platform.TabletTaskbar.ReadMode() == Llampec.Platform.TaskbarMode.TabletOptimized)
+        {
+            // Tablet rcWork can reserve only the collapsed strip. Reserve the shell-reported
+            // taskbar bounds so expanding it cannot cover our footer after a rotation.
+            // ABM_GETTASKBARPOS reports the system taskbar, not an arbitrary monitor's bar.
+            // https://learn.microsoft.com/windows/win32/shell/abm-gettaskbarpos
+            var bar = new Shell32.APPBARDATA { cbSize = (uint)Marshal.SizeOf<Shell32.APPBARDATA>() };
+            if (Shell32.SHAppBarMessage(Shell32.ABM_GETTASKBARPOS, ref bar) != 0 && bar.uEdge == 3
+                && bar.rc.Left >= info.rcMonitor.Left && bar.rc.Right <= info.rcMonitor.Right
+                && bar.rc.Right > bar.rc.Left && bar.rc.Top > work.Top
+                && bar.rc.Bottom == info.rcMonitor.Bottom && bar.rc.Top < bar.rc.Bottom)
+                work.Bottom = Math.Min(work.Bottom, bar.rc.Top);
+        }
+        return (work, scale);
+    }
+
+    public void OnDisplayEnvironmentChanged()
+    {
+        if (!_disposed && AppWindow.IsVisible) Reposition();
     }
 
     private void OnPageSizeChanged(object sender, SizeChangedEventArgs e)
@@ -586,6 +586,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _scheduleView?.Dispose();
         _caffeineView?.Dispose();
         _alwaysOnTopView?.Dispose();
+        _rotationView?.Dispose();
         _logitechMouseView?.Dispose();
         foreach (var unsubscribe in _unsubscribe.Concat(_subUnsubscribe)) unsubscribe();
         _model.PropertyChanged -= OnModelChanged;

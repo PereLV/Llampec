@@ -21,8 +21,8 @@ device services have an independent lifetime in the application.
   buttons. It edits stable ids in a draft. Save writes the order and rebuilds the grid;
   Cancel/Back/dismissal discards it. There are no action buttons in the editing list.
   Stale/duplicate ids are ignored and new actions are appended in catalogue order.
-  Version 0.2.0-alpha.5 adds Screenshot to the eight-action catalogue; existing
-  saved ordering is retained and the new action is appended when not already listed.
+  Version 0.2.0-alpha.7 has ten actions, including Touch taskbar and Rotation lock.
+  Existing saved ordering is retained; new actions are appended when not already listed.
 - Logitech MX: an optional selected-device service for button shortcuts, sensor DPI,
   SmartShift and native scroll direction. Scan/select and edit a draft, then Apply;
   opening the page does not alter the mouse. Empty button assignments preserve

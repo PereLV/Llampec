@@ -3,7 +3,9 @@
 The **Screenshot** tile (**Captura de pantalla** in Spanish and Catalan/Valencian)
 opens Windows' native screen-capture selector with **Win+Shift+S**. It is one of
 Llampec's eight quick actions and participates in the existing button ordering.
-Its icon is a dotted selection frame with rounded corners and a plus sign.
+Its icon is a dashed selection frame with rounded corners and a plus sign.
+Four separated dashes keep the frame legible at the same 20-DIP size as the
+other quick-action icons.
 
 ## Behavior
 
@@ -31,7 +33,7 @@ a protected desktop.
 - `FlyoutWindow.RunWithPanelHiddenAsync` waits until `FinishHide` has hidden the
   native window. It checks that the panel has not reopened and invokes the action
   in that same UI continuation; interrupted dismissal does not launch it.
-- `FlyoutWindow.ScreenshotIcon` draws a vector selection frame and plus sign,
+- `ActionIcons.Screenshot` draws a vector selection frame and plus sign,
   inheriting the button's foreground for themes, high contrast and disabled state.
 
 There is no new dependency, worker, hook, persistent capture state or periodic task.

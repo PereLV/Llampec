@@ -23,9 +23,19 @@ SDK files included and a separate .NET Runtime requirement.
 `ActionCatalog` registers actions with stable identifiers. Preferences retain tile
 order and visibility by identifier. Stateful services such as caffeine and theme
 scheduling live outside page controls so that closing the panel does not stop them.
-The default catalogue has eight actions: HDR, display power, theme, projection,
-taskbar, caffeine, Always on Top and screenshot. The Logitech module is a settings
+The application catalogue has ten actions: HDR, display power, theme, projection,
+taskbar, touch taskbar, caffeine, Always on Top, rotation and screenshot. The Logitech module is a settings
 page and background service, not another tile.
+
+`DisplayOrientationService` belongs to `App`, independently of the disposable
+`RotationView`. It serializes verified lock/mode changes and applies and saves an
+orientation immediately, without a confirmation timer. Only a failed operation
+retains a recovery snapshot; recovery checks that a newer external change has not
+superseded it. Normal shutdown retries any pending failure recovery while the
+dispatcher remains alive; successful orientation choices remain applied.
+System display/settings/resume events coalesce refreshes
+of rotation and taskbar controls and reposition the panel on its opening monitor.
+See [tablet controls](TABLET.md) for contracts and hardware limitations.
 
 One-shot actions pass their operation through `TileViewModel` and
 `FlyoutViewModel.RunWithPanelHiddenRequested`.

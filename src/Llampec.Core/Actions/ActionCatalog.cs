@@ -9,7 +9,7 @@ namespace Llampec.Actions;
 public static class ActionCatalog
 {
     public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents, Caffeine.CaffeineAction caffeine,
-        AlwaysOnTop.AlwaysOnTopAction? alwaysOnTop = null)
+        AlwaysOnTop.AlwaysOnTopAction? alwaysOnTop = null, Rotation.RotationAction? rotation = null)
     {
         ArgumentNullException.ThrowIfNull(systemEvents);
 
@@ -20,9 +20,11 @@ public static class ActionCatalog
             new Theme.ThemeAction(),
             new Projection.ProjectionAction(),
             new Taskbar.TaskbarAutoHideAction(),
+            new Taskbar.TouchTaskbarAction(),
             caffeine,
         ];
         if (alwaysOnTop is not null) actions.Add(alwaysOnTop);
+        if (rotation is not null) actions.Add(rotation);
         actions.Add(new Screenshot.ScreenshotAction());
         return actions;
     }

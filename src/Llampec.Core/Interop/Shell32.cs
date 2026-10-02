@@ -67,6 +67,7 @@ public static partial class Shell32
     // ---- SHAppBarMessage (shellapi.h): taskbar state ----
 
     public const uint ABM_GETSTATE = 0x00000004;
+    public const uint ABM_GETTASKBARPOS = 0x00000005;
     public const uint ABM_SETSTATE = 0x0000000A;
 
     public const uint ABS_AUTOHIDE = 0x00000001;

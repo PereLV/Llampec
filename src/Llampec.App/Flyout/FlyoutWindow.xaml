@@ -18,8 +18,8 @@
   </Grid.RowDefinitions>
   <Grid x:Name="PageHeader" ColumnSpacing="12" Margin="20,16,20,0" Visibility="Collapsed">
    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-   <Button x:Name="BackButton" Click="OnBack" Visibility="Collapsed" AutomationProperties.Name="Back">
-    <FontIcon Glyph="&#xE72B;" FontSize="16" />
+   <Button x:Name="BackButton" Click="OnBack" Visibility="Collapsed" AutomationProperties.Name="Back" MinWidth="40" MinHeight="40">
+    <FontIcon Glyph="&#xE72B;" FontFamily="Segoe Fluent Icons" FontSize="16" />
    </Button>
    <TextBlock x:Name="Heading" Grid.Column="1" Text="Llampec" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
   </Grid>
@@ -36,8 +36,8 @@
     <Grid>
      <TextBlock Text="Llampec" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" />
      <Button x:Name="MenuButton" HorizontalAlignment="Right" Click="OnMenu" AutomationProperties.Name="Menu"
-             Style="{StaticResource SubtleButtonStyle}">
-      <FontIcon Glyph="&#xE713;" FontSize="18" />
+             Style="{StaticResource SubtleButtonStyle}" MinWidth="40" MinHeight="40">
+      <FontIcon Glyph="&#xE713;" FontFamily="Segoe Fluent Icons" FontSize="20" />
      </Button>
     </Grid>
    </Border>

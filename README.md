@@ -2,9 +2,8 @@
 
 A compact Windows 11 quick-settings companion by [PereLV](https://github.com/PereLV).
 
-**0.2.0-alpha.6** includes Logitech MX controls and a screenshot action with a
-dotted selection-frame icon. Llampec lives in the notification area and provides
-eight configurable quick actions:
+**0.2.0-alpha.7** adds tablet controls and refined Fluent-style icons. Llampec
+lives in the notification area and provides ten configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -12,6 +11,12 @@ eight configurable quick actions:
   sunrise/sunset scheduling and a countdown to the next change.
 - **Multiple displays:** choose PC screen only, Duplicate, Extend or Second screen only.
 - **Taskbar:** toggle automatic hiding.
+- **Touch taskbar:** enable or disable touch optimization in tablet posture.
+  Conventional auto-hide is disabled while the touch taskbar is active.
+- **Rotation lock:** toggle the internal display's rotation lock; choose a display
+  and apply an orientation immediately from four visual screen/AB choices.
+  Manual orientation also works when Windows pauses automatic rotation for a
+  keyboard, dock or multiple-monitor configuration.
 - **Caffeine:** prevent automatic sleep for a chosen duration, optionally keeping
   the display on.
 - **Always on Top:** pin the last active window, use a configurable shortcut, or
@@ -110,7 +115,7 @@ for either target:
 
 The script publishes Release, verifies the executable and required WinUI PRI/XBF
 resources, includes the README, license and dependency notices, and creates
-`publish/Llampec-0.2.0-alpha.6-<architecture>.zip`. It refuses to reuse an existing
+`publish/Llampec-0.2.0-alpha.7-<architecture>.zip`. It refuses to reuse an existing
 output folder. Keep the complete extracted folder together.
 
 For a development publish without packaging:
@@ -134,9 +139,14 @@ The excluded integration tests inspect the real Windows session, and
 `ProjectionModesTests` reapplies the current display topology. Run those tests
 explicitly on suitable hardware.
 
-Validation on 2026-09-21: 244 tests passed with that filter, plus six read-only
-action-catalog integration tests on the local Windows session (250 in total).
-Hardware and manual coverage are recorded in the feature documents below.
+Validation on 2026-10-02: 386 tests passed with that filter; ARM64 and x64 Release
+builds completed without errors or warnings. Computer Use verified the final
+portrait lettering, Windows display-settings link and manual orientation with an
+attached keyboard on the Surface ARM64. Earlier checks covered light/dark icons
+and persistence across normal application exit/relaunch. Hardware limits and
+the separate investigation of global tablet posture are recorded in
+[tablet controls](docs/TABLET.md). The global touch-mode experiment is deferred to
+a future version and is outside this release's scope.
 
 HDR's per-monitor list is captured at startup. Restart Llampec after connecting a
 new monitor to add it to that list; unplugged monitors are disabled. ARM64 and x64
@@ -156,6 +166,9 @@ Developer documentation:
 - [Settings and languages](docs/SETTINGS.md)
 - [Always on Top](docs/ALWAYS_ON_TOP.md)
 - [Screenshot](docs/SCREENSHOT.md)
+- [Tablet controls and orientation](docs/TABLET.md)
+- [Future rotation-animation research](docs/ROTATION_ANIMATION_RESEARCH.md)
+- [Future global touch-mode research](docs/GLOBAL_TOUCH_MODE_RESEARCH.md)
 - [Logitech MX diagnostic probe](docs/LOGITECH_PROTOTYPE.md)
 - [Logitech MX settings and service](docs/LOGITECH.md)
 - [Acknowledgements](docs/ACKNOWLEDGEMENTS.md)
