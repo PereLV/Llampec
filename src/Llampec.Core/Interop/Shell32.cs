@@ -69,6 +69,7 @@ public static partial class Shell32
     public const uint ABM_GETSTATE = 0x00000004;
     public const uint ABM_GETTASKBARPOS = 0x00000005;
     public const uint ABM_SETSTATE = 0x0000000A;
+    public const uint ABM_GETAUTOHIDEBAREX = 0x0000000B;
 
     public const uint ABS_AUTOHIDE = 0x00000001;
     public const uint ABS_ALWAYSONTOP = 0x00000002;

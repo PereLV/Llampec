@@ -62,6 +62,8 @@ public sealed class AlwaysOnTopTests
         public void Foreground(nint handle) { ForegroundWindow = handle; WindowChanged?.Invoke(new(handle, true)); }
         public void Notify(nint handle) => WindowChanged?.Invoke(new(handle, false));
         public void Move(nint handle) => WindowChanged?.Invoke(new(handle, false, true));
+        public bool Tracking;
+        public void SetWindowTracking(bool enabled) => Tracking = enabled;
         public void Dispose() => Disposed = true;
     }
 
@@ -74,6 +76,54 @@ public sealed class AlwaysOnTopTests
             borders?.Add(border);
             return border;
         });
+    }
+
+    [Fact]
+    public void IdleServiceFollowsOnlyForegroundWithoutEnumeratingWindows()
+    {
+        var windows = new Windows();
+        using var service = Create(windows);
+        Assert.False(windows.Tracking);
+        int enumerations = windows.Enumerations;
+        windows.Foreground(2);
+        windows.Foreground(3);
+        Assert.Equal(enumerations, windows.Enumerations);
+        service.CaptureTarget();
+        Assert.True(windows.Tracking);
+        Assert.Equal((nint)2, service.TargetWindow);
+        service.ReleaseTarget();
+        Assert.False(windows.Tracking);
+    }
+
+    [Fact]
+    public void PinnedWindowKeepsWindowTrackingUntilUnpinned()
+    {
+        var windows = new Windows();
+        using var service = Create(windows);
+        service.CaptureTarget();
+        service.ToggleTarget();
+        service.ReleaseTarget();
+        Assert.True(windows.Tracking);
+        service.UnpinAll();
+        Assert.False(windows.Tracking);
+    }
+
+    [Fact]
+    public void HiddenPanelFollowsOnlyPinnedWindows()
+    {
+        var windows = new Windows();
+        using var service = Create(windows);
+        service.CaptureTarget();
+        service.ToggleTarget();
+        service.ReleaseTarget();
+        int enumerations = windows.Enumerations;
+        windows.Notify(2);
+        windows.Move(2);
+        Assert.Equal(enumerations, windows.Enumerations);
+        windows.Items.Remove(1);
+        windows.Notify(1);
+        Assert.Equal(0, service.PinnedCount);
+        Assert.False(windows.Tracking);
     }
 
     [Fact]
@@ -297,6 +347,30 @@ public sealed class AlwaysOnTopTests
         service.UnpinAll();
         Assert.Equal(0, service.PinnedCount);
         Assert.True(borders[0].Disposed);
+    }
+
+    [Fact]
+    public void DeactivationFailureKeepsPinsAndBackendAliveUntilRecoverySucceeds()
+    {
+        var windows = new Windows();
+        var borders = new List<Border>();
+        using var service = Create(windows, borders: borders);
+        service.ToggleTarget();
+        windows.FailUnpin = true;
+
+        Assert.False(service.TryDeactivate());
+        Assert.Equal(1, service.PinnedCount);
+        Assert.Single(windows.Claims);
+        Assert.False(windows.Disposed);
+        Assert.False(Assert.Single(borders).Disposed);
+
+        windows.FailUnpin = false;
+        Assert.True(service.TryDeactivate());
+        Assert.Equal(0, service.PinnedCount);
+        Assert.Empty(windows.Claims);
+        Assert.True(borders[0].Disposed);
+        Assert.False(windows.Disposed); // The host disposes only after successful preparation.
+        Assert.True(service.TryDeactivate());
     }
 
     [Fact]

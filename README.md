@@ -1,9 +1,28 @@
 # Llampec
 
-A compact Windows 11 quick-settings companion by [PereLV](https://github.com/PereLV).
+A compact, open-source Windows 11 quick-settings panel by
+[Pere Esquerdo Ramis](https://github.com/PereLV).
 
-**0.2.0-alpha.7** adds tablet controls and refined Fluent-style icons. Llampec
-lives in the notification area and provides ten configurable quick actions:
+Llampec is growing into what the Windows 11 Quick Settings panel should have
+been — with a few extra vitamins: the controls you actually reach for, arranged
+your way, one click from the notification area. It stays simple and lightweight:
+it gives quick access to existing Windows settings without deep system changes,
+and does no work in the background while it waits.
+
+**0.2.0-alpha.8** adds Fullscreen, a fully customizable panel and lower idle
+CPU use:
+
+- **Edit the panel like Quick Settings.** Choose 1–6 columns, create categories,
+  and drag buttons or whole categories into place with a live preview. Remove a
+  button with its corner ×, or add it back with **+ Add module**. Removed modules
+  are fully unloaded and use no resources.
+- **Fullscreen** for any app window, with a shortcut and mouse-edge taskbar reveal.
+- The panel leaves room for an expanded or auto-hidden taskbar.
+- While idle, Llampec no longer reacts to other windows or mouse movement: with
+  ordinary desktop activity its background CPU use dropped from about 1 s per
+  20 s to none in local measurements.
+
+Llampec lives in the notification area and provides eleven configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -23,6 +42,16 @@ lives in the notification area and provides ten configurable quick actions:
   choose windows from a list. An optional accent-colored border has adjustable thickness.
 - **Screenshot:** close the panel, then open the native Windows capture selector
   with **Win+Shift+S**.
+- **Fullscreen:** press **Ctrl+Alt+F** or its Llampec button to fill the active
+  window's monitor while keeping the app's own controls. The options show the
+  active app and monitor and allow changing the shortcut. Selecting another app
+  window restores the original state. Mouse-edge reveal uses the taskbar available
+  on that monitor; Windows handles the native touch gesture.
+  See [fullscreen behavior and validation](docs/FULLSCREEN.md).
+
+The pencil at the bottom of the panel (or **Settings → Buttons and categories**)
+opens the visual editor. The panel uses **1–6 columns** (default **3**) and adapts
+its width to the monitor. See [panel layout](docs/PANEL_LAYOUT.md).
 
 Settings also includes an optional **Logitech MX** module: assign keyboard shortcuts
 to supported mouse buttons (including the thumb button), adjust sensor DPI and
@@ -52,6 +81,14 @@ and extract it to a permanent folder.
 Open `Llampec.exe`, click its notification-area icon, or press **Ctrl+Alt+Space**.
 Click outside the panel or press **Escape** to close it. Right-click the icon for
 the menu; the gear opens Settings. Use `Llampec.exe --background` to start silently.
+
+To customize the panel, select the pencil. Each group appears as a block and
+buttons look as they do in the panel, but they do not run. Drag a button by its
+face, or a category by its heading; an empty slot shows where it will land, and
+holding it at the top or bottom edge scrolls. **×** removes a button,
+**+ Add module** restores one, **⋯** renames, moves or deletes a category, and
+**+** at the top creates one. On the keyboard, **Enter** opens a button's options
+and **Delete** removes it. **Save** applies the changes; **Cancel** discards them.
 
 Each split button has an arrow for its options. For light/dark scheduling, choose
 fixed hours or sunrise/sunset and select **Apply**. Solar scheduling accepts manual
@@ -95,6 +132,20 @@ telemetry or application-owned network requests. Location is requested only thro
 the location button; Windows location providers may use the network. Saved
 coordinates are used for offline solar calculations.
 
+## Roadmap
+
+Future versions plan to bring more everyday controls into the same panel:
+
+- **Power options:** power mode and energy-saving choices.
+- **Network settings:** quick access to network connections and their options.
+- **Wireless projection:** connect to wireless displays.
+- **Webcams:** manage the available cameras.
+- **Volume and brightness:** launchers for the Windows volume and brightness panels.
+
+Each addition follows the same principle: quick access to existing Windows settings,
+no deep system changes and no background cost while idle. Plans may change as each
+feature is researched.
+
 ## Build and run
 
 Development requires the .NET 10 SDK and the Windows build tools required by
@@ -115,7 +166,7 @@ for either target:
 
 The script publishes Release, verifies the executable and required WinUI PRI/XBF
 resources, includes the README, license and dependency notices, and creates
-`publish/Llampec-0.2.0-alpha.7-<architecture>.zip`. It refuses to reuse an existing
+`publish/Llampec-0.2.0-alpha.8-<architecture>.zip`. It refuses to reuse an existing
 output folder. Keep the complete extracted folder together.
 
 For a development publish without packaging:
@@ -139,11 +190,14 @@ The excluded integration tests inspect the real Windows session, and
 `ProjectionModesTests` reapplies the current display topology. Run those tests
 explicitly on suitable hardware.
 
-Validation on 2026-10-02: 386 tests passed with that filter; ARM64 and x64 Release
-builds completed without errors or warnings. Computer Use verified the final
-portrait lettering, Windows display-settings link and manual orientation with an
-attached keyboard on the Surface ARM64. Earlier checks covered light/dark icons
-and persistence across normal application exit/relaunch. Hardware limits and
+Validation on 2026-10-06: 476 tests passed with that filter (486 in the full local
+run, plus the opt-in native fullscreen smoke test); ARM64 and x64 Release packages
+built without errors or warnings and passed the resource check. Mouse and keyboard
+checks on the Surface ARM64 covered the panel editor (drag preview, category moves,
+edge scrolling, ×, + Add module, Escape and Cancel), Always on Top pinning and
+release with the new on-demand window tracking, and Logitech reconnection.
+Physical touchscreen dragging in the editor is still untested. Earlier releases
+verified tablet controls and orientation on the same device. Hardware limits and
 the separate investigation of global tablet posture are recorded in
 [tablet controls](docs/TABLET.md). The global touch-mode experiment is deferred to
 a future version and is outside this release's scope.
@@ -173,6 +227,13 @@ Developer documentation:
 - [Logitech MX settings and service](docs/LOGITECH.md)
 - [Acknowledgements](docs/ACKNOWLEDGEMENTS.md)
 
+## Credits
+
+Llampec is designed, developed and maintained by **Pere Esquerdo Ramis**
+([@PereLV](https://github.com/PereLV)). Third-party components and references are
+credited in [Acknowledgements](docs/ACKNOWLEDGEMENTS.md).
+
 ## License
 
-[MIT](LICENSE) · Copyright © 2026 PereLV.
+[MIT](LICENSE) · Copyright © 2026 Pere Esquerdo Ramis.
+[Source code on GitHub](https://github.com/PereLV/Llampec).

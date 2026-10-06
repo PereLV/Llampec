@@ -4,6 +4,10 @@ Version **0.2.0-alpha.7** adds **Touch taskbar** and **Rotation lock**.
 The [initial research](TABLET_RESEARCH.md) records the scope and alternatives considered.
 Separate follow-up research covers the [native rotation animation](ROTATION_ANIMATION_RESEARCH.md)
 and [global touch mode](GLOBAL_TOUCH_MODE_RESEARCH.md); those features are outside this release.
+Both investigations are now parked under the user's lightweight-product scope.
+The [touchscreen-gesture research](#touchscreen-gestures-research) below records
+configurability and local observations for future discussions, without choosing
+a new feature to implement.
 
 ## Touch taskbar
 
@@ -95,12 +99,14 @@ found for invoking the sensor-driven animation from this WinUI desktop selector.
 Llampec therefore changes the orientation without promising that animation;
 it does not emulate a sensor event or overlay a fake full-screen transition.
 
-## Global tablet posture: deferred to a future version
+## Global tablet posture: parked research
 
 The user deferred the global touch-mode experiment on 2026-10-02. It is outside
 this tablet-controls block and does not block its completion or a release. The
-research below is retained for a future version; no system-changing experiment is planned
-for the current work.
+research below is retained as historical context; no system-changing experiment
+is planned. After reviewing the proposals, the user reaffirmed that Llampec
+should expose existing settings without deep OS changes. Reconsider only if a
+simple supported approach fits that scope.
 
 Touch-taskbar preference and global tablet posture are separate. Disabling
 `ExpandableTaskbar` does not report an attached keyboard to Windows. Applications
@@ -137,6 +143,223 @@ No global switch is exposed by Llampec. If this work is resumed in a future
 version, its experiment must record and
 restore the exact original posture and app preferences and verify the live
 metric and visible behavior before drawing conclusions.
+
+## Full-screen windows
+
+**Integrated into the development application on 2026-10-05 after user approval.**
+The tile, configurable shortcut, active-window/display indicator and session
+restoration now belong to Llampec. See [fullscreen behavior](FULLSCREEN.md) for
+the current implementation and validation limits. It has no trial timeout and
+allows any monitor, including monitors without a local taskbar.
+
+The following records the earlier standalone experiments.
+`tools/test-fullscreen-edge.ps1` and `tools/FullscreenEdgeTrial.cs` test a
+borderless window that covers its monitor while preserving the app's own controls
+and the user's taskbar preferences. This is separate from browser F11 and from
+the earlier `NonRudeHWND` experiment in `tools/test-fullscreen.ps1`.
+
+The user reported that mouse reveal works with conventional taskbar auto-hide
+both enabled and disabled. The native bottom-edge touch gesture also reveals the
+bar. An early revision mistakenly restored the window when a shell panel took
+focus; later revisions preserve the mode during shell interaction. The user then
+reported a narrow transparent frame around the window. The revised experiment
+removes extended frame styles, requests square corners only when the original
+preference can be preserved, and compensates small measured invisible margins
+using DWM visible bounds. The user confirmed that the narrow frame still appeared
+in the 120-second version. The integrated backend additionally compensates measured
+client insets and clips overscan to the selected monitor; its visual result still
+needs validation in Edge.
+[Visible versus exterior window bounds](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect).
+
+The controls agreed in this discussion and now integrated are:
+
+- A Llampec toggle button that restores the original window state when switched
+  off. Its status should identify the active application and display.
+- A global toggle shortcut, **Ctrl+Alt+F** by default, using the existing
+  configurable-shortcut pattern.
+- Selecting a different application window restores the fullscreen window. The
+  prototype applies this to taskbar selection and Alt+Tab, including another
+  window from the same process. Taskbar surfaces, system panels, Llampec and
+  dialogs owned by the target preserve the mode and pause mouse-edge detection.
+
+The shortcut remains available for the whole bounded test session, allowing
+activation again after manual or automatic restoration. The console reports the
+monitor device identifier; it is not a permanent on-screen overlay. This first
+prototype is limited to the monitor with the primary bottom-edge taskbar;
+this restriction does not apply to the integrated service.
+Normal expiry restores the window and releases the shortcut. Keep its PowerShell
+process open while a window is modified.
+
+Native synthetic-window checks on ARM64 pass for visible monitor coverage,
+extended-style and corner restoration, normal/maximized restoration without
+changing the foreground, minimized/hidden state preservation, partial-failure
+rollback, shortcut reservation/conflict/release and the foreground policy. These
+checks do not establish visual compatibility with every app or every combination
+of conventional auto-hide and touch-optimized taskbar modes. The integrated
+button, display indicator and new client-margin compensation have their own
+production tests; real multi-monitor and Edge visual validation remain ongoing.
+
+## Touchscreen gestures research
+
+Research on 2026-10-02, recorded on 2026-10-03. This concerns the **screen**,
+not the keyboard's touchpad. No gestures, settings or app behavior were changed.
+
+### What Windows assigns
+
+Windows 10 assigned the left edge to Task View and the right edge to Action
+Center. Windows 11's baseline assigns those edges to Widgets and notifications.
+Its general support page documents three fingers up for Task View, three down
+for the desktop, three horizontally for the previous app, and four horizontally
+for virtual desktops. [Microsoft gesture catalogue](https://support.microsoft.com/en-us/windows/hardware/input-devices/touch-gestures-for-windows).
+
+The user reports that **four fingers up also opens Task View**. This matches
+Microsoft's original Windows 11 announcement, which explicitly gives four-finger
+vertical swipes the same behavior as three-finger vertical swipes. After showing
+the desktop, swiping up can instead restore the minimized windows. Do not dismiss
+the user's observation because the shorter support table lists only three up.
+[Windows 11 input announcement](https://blogs.windows.com/windows-insider/2021/06/28/announcing-the-first-insider-preview-for-windows-11/).
+
+### Actual configurability
+
+| Screen control | Scope found |
+| --- | --- |
+| Three- and four-finger gestures | One on/off setting; no freely assignable system actions found. |
+| Left-edge swipe | Enables/disables the Widgets gesture; no Task View assignment found. |
+| Right-edge swipe | Copilot+ PCs can select Click to Do or return to notifications. |
+| Two-finger press-and-hold | Enables/disables the Click to Do gesture on supported Copilot+ PCs. |
+| Touch to wake | Hardware-dependent wake preference, not an assignable navigation gesture. |
+
+The screenshot supplied by the user shows three/four fingers enabled, touch to
+wake enabled, left edge enabled, right edge set to **Click to Do**, and two-finger
+hold enabled. The right-edge dropdown and Additional touch settings are closed
+in that screenshot; their full local options were not inspected. Do not claim
+that an arbitrary action or a particular full dropdown list was verified.
+
+Microsoft documents switching the right edge back to notifications in Touch
+settings. That Copilot+ behavior is newer than the generic gesture table.
+[Right-edge change](https://blogs.windows.com/windows-insider/2025/04/03/announcing-windows-11-insider-preview-build-26120-3671-beta-channel/).
+The two-finger hold opens Click to Do; it is distinct from a one-finger long
+press for a context menu. [Released update description](https://support.microsoft.com/en-us/servicing/os/windows-11/2025/10/october-28-2025-kb5067036-os-builds-26200-7019-and-26100-7019-preview).
+Touch-to-wake depends on device support, posture and power state.
+[Wake-on-Touch guide](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/wake-on-touch-implementation-guide).
+
+Disabling three/four-finger system gestures frees those interactions for apps;
+it does not create replacement system mappings. This may matter for drawing
+software with its own gestures. Microsoft recommends linking to
+`ms-settings:devices-touch`. Touchpad action dropdowns are a separate setting.
+[System reservation of gestures](https://learn.microsoft.com/en-us/troubleshoot/windows/win32/finger3or4-touch-interaction-no-longer-works).
+
+### Why the left edge appears to do nothing on this Surface
+
+Read-only local observations: Windows 11 Home (`Core`), **26H1 build
+28000.2956**. `Get-AppxPackage -Name MicrosoftWindows.Client.WebExperience`
+returned zero packages for the current user without an error. The user then
+confirmed: **Widgets was removed**. These facts strongly support a missing
+Widgets destination as the explanation, rather than an unused configurable
+gesture. Physical swipe behavior was not independently tested or repaired.
+
+Microsoft identifies Windows Web Experience Pack as a Widgets dependency.
+Merely hiding the taskbar button would not normally disable the edge gesture;
+uninstalling its component is a different action.
+[Widgets dependency](https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/how-to-update-the-windows-web-experience-pack),
+[Widgets access and taskbar visibility](https://support.microsoft.com/en-us/windows/experience/personalization/stay-up-to-date-with-widgets-in-windows).
+
+The checked HKLM/HKCU `SOFTWARE\Policies\Microsoft\Dsh` values
+`AllowNewsAndInterests` and `DisableWidgetsBoard`, and
+`SOFTWARE\Policies\Microsoft\Windows\EdgeUI\AllowEdgeSwipe`, were absent.
+HKCU `Explorer\Advanced\TaskbarDa` was also absent. This limited snapshot does
+not exclude every policy or other source of failure. Nothing was installed,
+enabled or restored; the user had intentionally removed Widgets.
+
+Computer Use returned `native pipe is unavailable` / `os error 2`, including
+after the documented retry and session reset. Consequently this investigation
+used the user's screenshot, public documentation and read-only system queries;
+it did not inspect live dropdowns or reproduce multi-touch input.
+
+### Implications for Llampec
+
+No supported setting/API was found to assign **Task View to the touchscreen's
+left edge**. `SetGestureConfig` configures a particular window, not the shell's
+global gesture actions. Edge-swipe policies permit blocking system edge UI,
+not choosing replacement actions.
+[Per-window configuration](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setgestureconfig),
+[Edge-swipe policy](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-lockdown#allowedgeswipe).
+
+This is not a claim that interception is technically impossible: the public
+`RegisterPointerInputTarget` API redirects all input of a chosen pointer type
+to a privileged UIAccess app, which must handle/pass on the other interactions.
+That would be a new input subsystem, not a shortcut to an existing preference,
+and does not fit the agreed product scope.
+[Pointer redirection](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerpointerinputtarget).
+
+Compatible ideas for a later discussion: a **Task View** action using the native
+Win+Tab shortcut, a link to Touch settings, or a compact gesture guide. Windows
+also has its own Task View taskbar button. None is selected for implementation.
+[Windows multitasking](https://support.microsoft.com/en-gb/windows/how-to-multitask-in-windows-b4fa0333-98f8-ef43-e25c-06d4fb1d6960).
+
+### Future idea: Llampec actions from screen edges
+
+**Recorded on 2026-10-03: future idea, pending evaluation; not the next
+implementation.** The user proposes turning off Windows' edge gestures in Touch
+settings, then assigning those gestures to Llampec actions. This is independent
+of the parked tablet-posture research and of the full-screen-window experiment.
+No touch settings, policies or input routing were changed for this evaluation.
+
+The first part has a lightweight route: Microsoft now documents separate left-
+and right-edge switches under **Bluetooth & devices > Touch > Touch screen edge
+gestures**. An entry point to that existing settings page fits Llampec's scope;
+direct toggles would still need an identified integration and local validation.
+Turning off a shell gesture does not register Llampec as its replacement handler.
+[Current Touch settings](https://support.microsoft.com/en-us/windows/hardware/input-devices/touch-gestures-for-windows).
+
+`AllowEdgeSwipe` blocks system UI from screen edges; it does not choose new
+actions. Its documented Policy CSP edition list is Pro, Enterprise, Education
+and IoT Enterprise, **not Home**, the edition observed on this Surface. The page
+maps the policy to `Software\Policies\Microsoft\Windows\EdgeUI\AllowEdgeSwipe`,
+but that mapping does not prove a supported Home toggle or immediate application
+on this build. Prefer the existing per-user settings over introducing a broad
+policy; do not create registry policy values merely to test the idea.
+[Policy contract and edition scope](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-lockdown#allowedgeswipe).
+
+The second part remains unvalidated as a lightweight global feature.
+`WM_POINTER`/`WM_GESTURE` and `SetGestureConfig` handle input for a target window,
+not arbitrary edge gestures over other apps. Public global redirection through
+`RegisterPointerInputTarget` requires **UIAccess**, allows one target per pointer
+type per desktop and redirects all input of that type, not only edge swipes.
+A replacement would need to recognize gestures and preserve the remaining touch
+input, including multi-touch. Microsoft's UIAccess guidance requires signing and
+protected installation and restricts its intended use to assistive technologies.
+This is a substantial input subsystem, not an existing Windows preference.
+[Pointer targeting](https://learn.microsoft.com/en-us/windows/win32/inputmsg/wm-pointerdown),
+[Window gesture messages](https://learn.microsoft.com/en-us/windows/win32/wintouch/wm-gesture),
+[Global redirection](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerpointerinputtarget),
+[UIAccess requirements](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-securityoverview).
+
+**Narrower candidate, based on documented window APIs:** a small Llampec window
+over a screen edge, topmost and non-activating, could receive normal
+`WM_POINTERDOWN` contacts that begin in its own area. Implicit pointer capture
+then keeps subsequent movement routed to that window until contact ends, even
+after the finger leaves the narrow strip. After disabling the native gesture,
+a local recognizer could trigger a Llampec action. This avoids redirecting all
+touch input and does not itself require the global API's UIAccess privilege.
+It is a design hypothesis, **not a verified replacement for shell gestures**.
+[Topmost/non-activating styles](https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles),
+[Position without activation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos),
+[Contact targeting and implicit capture](https://learn.microsoft.com/en-us/windows/win32/inputmsg/wm-pointerdown).
+
+The strip would own input in its area and could compete with app scrollbars or
+window resizing. Its intended visual transparency needs separate hit-testing
+validation: a layered window's alpha-zero/color-keyed areas pass mouse input,
+and `WS_EX_TRANSPARENT` also changes mouse routing. Do not assume that an
+invisible strip can both receive touch and pass unrelated input through.
+Before proceeding, test real touch, native edge reservation after disabling,
+ordinary mouse/pen input, app full-screen behavior and z-order, DPI/rotation and
+multiple monitors. Do not promise operation on the secure desktop. No overlay,
+input injection, private shell hook or driver was tested. Keep this bounded
+candidate on the future ideas list; continue only if it preserves ordinary input
+and fits the lightweight scope. Settings access and native shortcut buttons
+remain possible independent ideas.
+[Layered-window hit testing](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#layered-windows).
 
 ## Icons and touch targets
 

@@ -9,7 +9,8 @@ namespace Llampec.Actions;
 public static class ActionCatalog
 {
     public static IReadOnlyList<IQuickAction> Create(SystemEvents systemEvents, Caffeine.CaffeineAction caffeine,
-        AlwaysOnTop.AlwaysOnTopAction? alwaysOnTop = null, Rotation.RotationAction? rotation = null)
+        AlwaysOnTop.AlwaysOnTopAction? alwaysOnTop = null, Rotation.RotationAction? rotation = null,
+        Fullscreen.FullscreenAction? fullscreen = null)
     {
         ArgumentNullException.ThrowIfNull(systemEvents);
 
@@ -26,6 +27,7 @@ public static class ActionCatalog
         if (alwaysOnTop is not null) actions.Add(alwaysOnTop);
         if (rotation is not null) actions.Add(rotation);
         actions.Add(new Screenshot.ScreenshotAction());
+        if (fullscreen is not null) actions.Add(fullscreen);
         return actions;
     }
 }

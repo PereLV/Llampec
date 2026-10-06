@@ -33,7 +33,7 @@ public sealed class ThemeScheduler : IDisposable
         events.SettingChanged += OnSettingChanged;
     }
 
-    private void OnTick(DispatcherQueueTimer sender, object args) => _ = ApplyAsync();
+    private void OnTick(DispatcherQueueTimer sender, object args) { if (!_disposed) _ = ApplyAsync(); }
     private void OnStatusTick(DispatcherQueueTimer sender, object args) => UpdateStatus();
 
     /// <summary>The countdown only wakes while the panel is visible, never in the tray.</summary>
@@ -47,6 +47,7 @@ public sealed class ThemeScheduler : IDisposable
 
     private void UpdateStatus()
     {
+        if (_disposed) return;
         _statusTimer.Stop();
         StatusChanged?.Invoke(this, EventArgs.Empty);
         if (!_disposed && _statusVisible && ThemeScheduleStatus.NextUpdate(Plan, DateTimeOffset.Now) is { } interval)
@@ -57,11 +58,13 @@ public sealed class ThemeScheduler : IDisposable
     }
     private void OnClockChanged(object? sender, EventArgs args)
     {
+        if (_disposed) return;
         TimeZoneInfo.ClearCachedData();
         _dispatcher.TryEnqueue(() => _ = ApplyAsync());
     }
     private void OnSettingChanged(object? sender, string? section)
     {
+        if (_disposed) return;
         if (section == "TimeZoneInformation") OnClockChanged(sender, EventArgs.Empty);
         else if (section == "ImmersiveColorSet")
             // Reflect manual/external changes without reapplying the schedule or
@@ -112,9 +115,23 @@ public sealed class ThemeScheduler : IDisposable
         }
     }
 
+    /// <summary>
+    /// Stop future schedule work and wait for any already-started Windows theme write. The
+    /// caller must await this on the UI thread before releasing/replacing the module.
+    /// </summary>
+    public async Task DeactivateAsync()
+    {
+        Dispose();
+        await _gate.WaitAsync();
+        try { Plan = null; }
+        finally { _gate.Release(); }
+    }
+
     public void Dispose()
     {
+        if (_disposed) return;
         _disposed = true;
+        _statusVisible = false;
         _timer.Stop();
         _statusTimer.Stop();
         _timer.Tick -= OnTick;

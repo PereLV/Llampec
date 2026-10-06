@@ -16,8 +16,13 @@ internal sealed class NativeAlwaysOnTopWindowSystem : IAlwaysOnTopWindowSystem
     private const uint NoSize = 0x0001, NoMove = 0x0002, NoActivate = 0x0010, NoOwnerZOrder = 0x0200;
     private readonly string _marker = "Llampec.AlwaysOnTop." + Guid.NewGuid().ToString("N");
     private readonly uint _processId = (uint)Environment.ProcessId;
+    // Only the events handled below. The full 0x8000–0x8018 range also carries focus,
+    // selection and value changes, all marshalled to this process for nothing.
+    private static readonly (uint First, uint Last)[] WindowEventRanges =
+        [(ObjectCreate, ObjectReorder), (ObjectStateChange, ObjectNameChange), (ObjectCloaked, ObjectUncloaked)];
     private readonly WinEventProc _callback;
-    private nint _foregroundHook, _windowHook;
+    private readonly List<nint> _windowHooks = [];
+    private nint _foregroundHook;
     private bool _disposed;
 
     public event Action<WindowChange>? WindowChanged;
@@ -57,9 +62,25 @@ internal sealed class NativeAlwaysOnTopWindowSystem : IAlwaysOnTopWindowSystem
         _callback = OnWinEvent;
         // WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS. Callbacks use this thread's message loop.
         _foregroundHook = SetWinEventHook(ForegroundEvent, ForegroundEvent, 0, _callback, 0, 0, 2);
-        _windowHook = SetWinEventHook(ObjectCreate, ObjectUncloaked, 0, _callback, 0, 0, 2);
-        if (_foregroundHook == 0 || _windowHook == 0)
+        if (_foregroundHook == 0)
+            Log.Warn($"Always on Top foreground tracking hook unavailable: {Marshal.GetLastWin32Error()}");
+    }
+
+    /// <summary>Call on the thread that created this instance, which owns the message loop.</summary>
+    public void SetWindowTracking(bool enabled)
+    {
+        if (_disposed || enabled == (_windowHooks.Count != 0)) return;
+        if (!enabled) { UnhookWindows(); return; }
+        foreach (var (first, last) in WindowEventRanges)
+            if (SetWinEventHook(first, last, 0, _callback, 0, 0, 2) is var hook and not 0) _windowHooks.Add(hook);
+        if (_windowHooks.Count != WindowEventRanges.Length)
             Log.Warn($"Always on Top window tracking hook unavailable: {Marshal.GetLastWin32Error()}");
+    }
+
+    private void UnhookWindows()
+    {
+        foreach (nint hook in _windowHooks) _ = UnhookWinEvent(hook);
+        _windowHooks.Clear();
     }
 
     public WindowSnapshot? Read(nint handle)
@@ -223,8 +244,8 @@ internal sealed class NativeAlwaysOnTopWindowSystem : IAlwaysOnTopWindowSystem
         if (_disposed) return;
         _disposed = true;
         if (_foregroundHook != 0) _ = UnhookWinEvent(_foregroundHook);
-        if (_windowHook != 0) _ = UnhookWinEvent(_windowHook);
-        _foregroundHook = _windowHook = 0;
+        UnhookWindows();
+        _foregroundHook = 0;
         GC.KeepAlive(_callback);
     }
 

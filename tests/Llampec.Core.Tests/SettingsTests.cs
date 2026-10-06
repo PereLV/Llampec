@@ -1,5 +1,6 @@
 using Llampec.Platform;
 using Llampec.Settings;
+using System.Text.Json;
 using Microsoft.Win32;
 using Xunit;
 
@@ -27,6 +28,21 @@ public class SettingsTests
     [Fact]
     public void ReorderDropsDuplicatesAndStaleIdsAndAppendsNewActions()
         => Assert.Equal(new[] { "theme", "hdr", "new" }, TileOrdering.Normalize(["theme", "gone", "theme"], ["hdr", "theme", "new"]));
+
+    [Fact]
+    public void FullscreenPreferencesUpgradeOlderSettingsAndPreserveDisabledShortcut()
+    {
+        foreach (string json in new[] { "{}", "{\"fullscreen\":null}" })
+        {
+            var settings = JsonSerializer.Deserialize(json, SettingsJsonContext.Default.AppSettings)!;
+            Assert.Equal("Ctrl+Alt+F", settings.Fullscreen.Hotkey);
+        }
+        var disabled = new AppSettings();
+        disabled.Fullscreen.Hotkey = "";
+        string saved = JsonSerializer.Serialize(disabled, SettingsJsonContext.Default.AppSettings);
+        var restored = JsonSerializer.Deserialize(saved, SettingsJsonContext.Default.AppSettings)!;
+        Assert.Equal("", restored.Fullscreen.Hotkey);
+    }
 
     [Fact]
     public void StartupCommandQuotesPathAndStartsSilently()

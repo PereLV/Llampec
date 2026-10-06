@@ -17,11 +17,11 @@ device services have an independent lifetime in the application.
   manual launch refreshes an existing registration to its current location. This
   does not opt users in when no registration exists and leaves Windows' separate
   startup approval unchanged. Background and exit invocations never refresh it.
-- Reorder: a separate native ListView supports drag-and-drop and explicit Up/Down
-  buttons. It edits stable ids in a draft. Save writes the order and rebuilds the grid;
-  Cancel/Back/dismissal discards it. There are no action buttons in the editing list.
+- Buttons and categories: opens the same visual panel editor as the main panel's
+  pencil (see [panel layout](PANEL_LAYOUT.md)). It edits stable ids, categories,
+  columns and module choices in a draft; Save applies them and Cancel discards them.
   Stale/duplicate ids are ignored and new actions are appended in catalogue order.
-  Version 0.2.0-alpha.7 has ten actions, including Touch taskbar and Rotation lock.
+  Version 0.2.0-alpha.8 has eleven actions, including Fullscreen.
   Existing saved ordering is retained; new actions are appended when not already listed.
 - Logitech MX: an optional selected-device service for button shortcuts, sensor DPI,
   SmartShift and native scroll direction. Scan/select and edit a draft, then Apply;

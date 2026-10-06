@@ -5,8 +5,9 @@
     <LangVersion>latest</LangVersion><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild><AnalysisLevel>latest</AnalysisLevel><Deterministic>true</Deterministic>
-    <Version>0.2.0-alpha.7</Version><Authors>PereLV</Authors><Product>Llampec</Product>
-    <Copyright>Copyright (c) 2026 PereLV</Copyright>
+    <Version>0.2.0-alpha.8</Version><Authors>Pere Esquerdo Ramis</Authors><Product>Llampec</Product>
+    <Copyright>Copyright (c) 2026 Pere Esquerdo Ramis</Copyright>
     <RepositoryUrl>https://github.com/PereLV/Llampec</RepositoryUrl><PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType><PackageProjectUrl>https://github.com/PereLV/Llampec</PackageProjectUrl>
   </PropertyGroup>
 </Project>

@@ -302,7 +302,7 @@ public sealed class LogitechMouseService : IAsyncDisposable
             bool transient = IsTransient(error) && !_journalLoadFailed;
             SetStatus(transient ? LogitechMouseConnectionState.Disconnected : LogitechMouseConnectionState.Error, null, error.Message);
             Log.Warn($"Logitech mouse configuration unavailable: {error.Message}");
-            if (transient) ScheduleRetry();
+            if (transient) ScheduleRetry(absent: error is LogitechMouseAbsentException);
         }
     }
 
@@ -394,11 +394,14 @@ public sealed class LogitechMouseService : IAsyncDisposable
         lock (_operationLock) _operation?.Cancel();
     }
 
-    private void ScheduleRetry()
+    private void ScheduleRetry(bool absent = false)
     {
         if (!_settings.Enabled || _suspended || Volatile.Read(ref _suspendRequested) != 0 || Volatile.Read(ref _stopping) != 0) return;
         CancelRetry();
-        int seconds = _retryRound++ switch { 0 => 2, 1 => 5, _ => 15 };
+        // An absent HID path returns through Windows device notifications, which wake
+        // the service; the slow retry only covers a missed notification. A present but
+        // silent device, such as a receiver whose mouse is off, gives no such notice.
+        int seconds = _retryRound++ switch { 0 => 2, 1 => 5, 2 => 15, _ => absent ? 300 : 15 };
         var cancellation = new CancellationTokenSource();
         _retry = cancellation;
         long version = _retryVersion;

@@ -29,6 +29,12 @@ public sealed class AppSettings
         get => _alwaysOnTop;
         set => _alwaysOnTop = value ?? new();
     }
+    private FullscreenSettings _fullscreen = new();
+    public FullscreenSettings Fullscreen
+    {
+        get => _fullscreen;
+        set => _fullscreen = value ?? new();
+    }
 
     /// <summary>UI language tag ("en", "es", "ca") or null to follow Windows.</summary>
     public string? Language { get; set; }
@@ -40,9 +46,47 @@ public sealed class AppSettings
     public bool EnableLogFile { get; set; }
 
     /// <summary>Tile ids in display order. Ids not listed are appended in catalog order; ids in <see cref="HiddenTiles"/> are not shown.</summary>
-    public List<string> TileOrder { get; set; } = [];
+    private List<string> _tileOrder = [];
+    public List<string> TileOrder
+    {
+        get => _tileOrder;
+        set => _tileOrder = value ?? [];
+    }
 
-    public List<string> HiddenTiles { get; set; } = [];
+    private List<string> _hiddenTiles = [];
+    public List<string> HiddenTiles
+    {
+        get => _hiddenTiles;
+        set => _hiddenTiles = value ?? [];
+    }
+
+    private List<string> _disabledModules = [];
+    /// <summary>
+    /// Modules explicitly disabled by the user. Unlike legacy HiddenTiles, these ids
+    /// also prevent the app from constructing the module's services and shortcuts.
+    /// </summary>
+    public List<string> DisabledModules
+    {
+        get => _disabledModules;
+        set => _disabledModules = value ?? [];
+    }
+
+    private int _tileColumns = TileLayout.DefaultColumns;
+    /// <summary>Number of tile columns, from one to six. Existing settings keep three columns.</summary>
+    [JsonConverter(typeof(TileColumnsJsonConverter))]
+    public int TileColumns
+    {
+        get => _tileColumns;
+        set => _tileColumns = TileLayout.NormalizeColumns(value);
+    }
+
+    private List<TileCategory> _tileCategories = [];
+    /// <summary>User-defined categories in display order. Unassigned actions remain visible.</summary>
+    public List<TileCategory> TileCategories
+    {
+        get => _tileCategories;
+        set => _tileCategories = value ?? [];
+    }
 
     /// <summary>
     /// Home coordinates for schedule features that need sunrise/sunset (e.g. an automatic dark mode

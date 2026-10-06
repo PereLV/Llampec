@@ -442,6 +442,57 @@ public sealed class DisplayOrientationTests
         Assert.Equal(External.Mode, backend.Current.Find(External.Id)!.Mode);
     }
 
+    [Fact]
+    public async Task DeactivationReadFailureRetainsRecoveryUntilSuccessfulRetry()
+    {
+        var backend = new Backend(External);
+        await using var service = new DisplayOrientationService(backend);
+        await LeaveRecoveryPending(service, backend, External);
+        backend.CaptureFailuresRemaining = 1;
+
+        Assert.False(await service.TryDeactivateAsync());
+        Assert.True(service.RecoveryPending);
+        Assert.Equal(External.Id, service.RecoveryDisplayId);
+        Assert.Single(backend.Applies);
+
+        Assert.True(await service.TryDeactivateAsync());
+        Assert.False(service.RecoveryPending);
+        Assert.Equal(External.Mode, backend.Current.Find(External.Id)!.Mode);
+        Assert.Equal(External.Mode, backend.Current.Find(External.Id)!.SavedMode);
+    }
+
+    [Fact]
+    public async Task DeactivationNeverRevertsSuccessfullySavedOrientationOrLock()
+    {
+        var backend = new Backend(Internal);
+        await using var service = new DisplayOrientationService(backend);
+        await service.ChangeOrientationAsync(Internal.Id, DisplayOrientation.Portrait);
+        var applied = backend.Current;
+        int writes = backend.Applies.Count, shortcuts = backend.Shortcuts;
+
+        Assert.True(await service.TryDeactivateAsync());
+        Assert.Equal(applied, backend.Current);
+        Assert.Equal(writes, backend.Applies.Count);
+        Assert.Equal(shortcuts, backend.Shortcuts);
+        Assert.True(backend.Current.Rotation.IsLocked);
+    }
+
+    [Fact]
+    public async Task DeactivationReleasesObsoleteRecoveryWithoutOverwritingExternalChange()
+    {
+        var backend = new Backend(External);
+        await using var service = new DisplayOrientationService(backend);
+        await LeaveRecoveryPending(service, backend, External);
+        backend.Change(External.Id, External.Mode.WithOrientation(DisplayOrientation.LandscapeFlipped));
+        var external = backend.Current;
+        int writes = backend.Applies.Count;
+
+        Assert.True(await service.TryDeactivateAsync());
+        Assert.False(service.RecoveryPending);
+        Assert.Equal(external, backend.Current);
+        Assert.Equal(writes, backend.Applies.Count);
+    }
+
     [Theory]
     [InlineData(2)]
     [InlineData(3)]

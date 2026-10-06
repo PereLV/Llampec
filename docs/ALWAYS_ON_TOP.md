@@ -47,7 +47,12 @@ It is separate from `AlwaysOnTopView`, which is disposed when the panel closes.
 The `AlwaysOnTopAction` tile reflects its target; the separate count reflects all
 session pins. The selector keeps existing row controls and coalesces change events.
 
-The native backend observes foreground and window lifecycle events. Every owned
+The native backend always observes foreground changes, which remember the last
+external application when the tray icon takes focus. Window lifecycle events
+(create/destroy/show/hide/reorder, state, location, name and cloaking, in three
+narrow ranges) are hooked only while the panel is shown or a pin exists. With the
+panel hidden, only events of pinned windows are processed, so ordinary title or
+window changes elsewhere do not enumerate windows. Every owned
 pin has a process/thread identity and a Llampec-specific native ownership marker;
 unpinning checks both. Windows already topmost before a request are not claimed.
 Closing a target removes its record. A failed pin or unpin is reported in the UI.

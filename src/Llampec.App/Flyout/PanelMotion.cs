@@ -37,7 +37,9 @@ internal sealed class PanelMotion : IDisposable
         _distance = distance;
         if (!fresh) return;
         Cancel();
-        _visual.Properties.InsertVector3("Translation", new Vector3(0, distance, 32));
+        // Z stays 0: elevation belongs to the non-interactive ShadowCaster, since
+        // a Z translation here would offset hit testing across the whole panel.
+        _visual.Properties.InsertVector3("Translation", new Vector3(0, distance, 0));
         _visual.Opacity = 0;
     }
 
@@ -125,7 +127,7 @@ internal sealed class PanelMotion : IDisposable
     {
         _visual.StopAnimation("Translation.Y");
         _visual.StopAnimation("Opacity");
-        _visual.Properties.InsertVector3("Translation", new Vector3(0, _opening ? 0 : _distance, 32));
+        _visual.Properties.InsertVector3("Translation", new Vector3(0, _opening ? 0 : _distance, 0));
         _visual.Opacity = _opening ? 1 : 0;
     }
 

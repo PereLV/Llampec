@@ -15,6 +15,11 @@ internal interface IAlwaysOnTopWindowSystem : IDisposable
 {
     event Action<WindowChange>? WindowChanged;
     bool IsTrackingForeground { get; }
+    /// <summary>
+    /// Foreground changes are always reported. Other window events are reported only
+    /// while enabled, so an idle Llampec is not woken by every window in the session.
+    /// </summary>
+    void SetWindowTracking(bool enabled) { }
     string? LastError => null;
     nint ForegroundWindow { get; }
     ForegroundWindowResolution ResolveForeground(nint handle);

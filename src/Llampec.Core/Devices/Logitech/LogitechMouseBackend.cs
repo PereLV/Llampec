@@ -12,6 +12,12 @@ public sealed record LogitechMouseDevice(
     public string? UnitId { get; init; }
 }
 
+/// <summary>
+/// The configured HID path is not present. Windows reports its return through device
+/// notifications, unlike a present receiver whose mouse is switched off.
+/// </summary>
+public sealed class LogitechMouseAbsentException(string message) : IOException(message);
+
 public sealed record LogitechMouseStatus(LogitechMouseConnectionState State, LogitechMouseDevice? Device,
     string? Error, bool RecoveryPending)
 {
@@ -83,7 +89,7 @@ internal sealed class WindowsLogitechMouseBackend : ILogitechMouseBackend
         var info = WindowsHidTransport.EnumerateLogitech().FirstOrDefault(d =>
             d.ProductId == identity.ProductId && string.Equals(d.Path, identity.Path, StringComparison.OrdinalIgnoreCase)
             && (string.IsNullOrEmpty(identity.SerialNumber) || string.Equals(d.SerialNumber, identity.SerialNumber, StringComparison.Ordinal)));
-        if (info is null) throw new IOException("The selected Logitech mouse is disconnected.");
+        if (info is null) throw new LogitechMouseAbsentException("The selected Logitech mouse is disconnected.");
         return await OpenNativeAsync(info, identity.DeviceIndex, ct).ConfigureAwait(false);
     }
 

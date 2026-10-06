@@ -10,7 +10,7 @@ namespace Llampec.Flyout;
 
 public sealed partial class FlyoutWindow
 {
-    private enum UtilityPage { None, Settings, Reorder, Logitech }
+    private enum UtilityPage { None, Settings, Editor, Logitech }
     private UtilityPage _utilityPage;
     private LogitechMouseView? _logitechMouseView;
     private static string T(string key) => UiText.Get(key);
@@ -20,26 +20,31 @@ public sealed partial class FlyoutWindow
         Root.Language = UiText.Language;
         AutomationProperties.SetName(BackButton, T("Back"));
         AutomationProperties.SetName(MenuButton, T("Settings"));
+        AutomationProperties.SetName(EditButton, T("Edit panel"));
+        SaveEditorButton.Content = T("Save");
+        CancelEditorButton.Content = T("Cancel");
     }
 
     private void ReleaseSubpage()
     {
+        ReleasePanelEditor();
         foreach (var unsubscribe in _subUnsubscribe) unsubscribe();
         _subUnsubscribe.Clear();
         _scheduleView?.Dispose(); _scheduleView = null;
         _caffeineView?.Dispose(); _caffeineView = null;
         _alwaysOnTopView?.Dispose(); _alwaysOnTopView = null;
+        _fullscreenView?.Dispose(); _fullscreenView = null;
         _rotationView?.Dispose(); _rotationView = null;
         _logitechMouseView?.Dispose(); _logitechMouseView = null;
         Subpage.Children.Clear();
     }
 
-    private void RebuildTiles()
+    private void RebuildTiles(int? columns = null)
     {
         foreach (var unsubscribe in _unsubscribe) unsubscribe();
         _unsubscribe.Clear();
         Tiles.Children.Clear(); Tiles.ColumnDefinitions.Clear(); Tiles.RowDefinitions.Clear();
-        BuildTiles();
+        BuildTiles(columns);
     }
 
     private void ShowMainPage()
@@ -54,6 +59,7 @@ public sealed partial class FlyoutWindow
         _model.CloseSubpage();
         ReleaseSubpage();
         _utilityPage = page;
+        EditButton.Visibility = Visibility.Collapsed;
         PageHeader.Visibility = BackButton.Visibility = Subpage.Visibility = Visibility.Visible;
         Tiles.Visibility = Visibility.Collapsed;
         Heading.Text = T(title);
@@ -62,7 +68,7 @@ public sealed partial class FlyoutWindow
 
     private void GoBack()
     {
-        if (_utilityPage is UtilityPage.Reorder or UtilityPage.Logitech) ShowSettings();
+        if (_utilityPage is UtilityPage.Editor or UtilityPage.Logitech) ShowSettings();
         else if (_utilityPage == UtilityPage.Settings) ShowMainPage();
         else _model.CloseSubpage();
     }
@@ -138,8 +144,8 @@ public sealed partial class FlyoutWindow
             catch { ErrorBar.Message = T("Could not open Windows Settings."); ErrorBar.IsOpen = true; }
         };
         Subpage.Children.Add(windowsStartup);
-        var reorder = new Button { Content = T("Reorder buttons"), HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 12, 0, 0) };
-        reorder.Click += (_, _) => ShowReorder();
+        var reorder = new Button { Content = T("Buttons and categories"), HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 12, 0, 0) };
+        reorder.Click += (_, _) => ShowPanelEditor();
         Subpage.Children.Add(reorder);
         var logitech = new Button { Content = T("Logitech MX mouse"), HorizontalAlignment = HorizontalAlignment.Stretch };
         logitech.Click += (_, _) => ShowLogitechMouse();
@@ -158,84 +164,25 @@ public sealed partial class FlyoutWindow
         Reposition();
     }
 
-    private void ShowReorder()
-    {
-        BeginUtilityPage(UtilityPage.Reorder, "Reorder buttons");
-        Subpage.Children.Add(Note("Drag rows to change their order, or select one and use the arrows. The panel fills from left to right."));
-        var list = new ListView { CanDragItems = true, CanReorderItems = true, AllowDrop = true,
-            SelectionMode = ListViewSelectionMode.Single, MaxHeight = 320 };
-        AutomationProperties.SetName(list, T("Reorder buttons"));
-        foreach (var tile in _model.Tiles)
-        {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-            row.Children.Add(Icon("\uE700", 16));
-            row.Children.Add(new TextBlock { Text = tile.Title, FontSize = 14, VerticalAlignment = VerticalAlignment.Center });
-            var item = new ListViewItem { Content = row, Tag = tile.Id, MinHeight = 44 };
-            AutomationProperties.SetName(item, tile.Title);
-            list.Items.Add(item);
-        }
-        Subpage.Children.Add(list);
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var up = new Button { Content = T("Move up") };
-        var down = new Button { Content = T("Move down") };
-        void UpdateButtons()
-        {
-            up.IsEnabled = list.SelectedIndex > 0;
-            down.IsEnabled = list.SelectedIndex >= 0 && list.SelectedIndex < list.Items.Count - 1;
-        }
-        void Move(int delta)
-        {
-            int from = list.SelectedIndex, to = from + delta;
-            if (from < 0 || to < 0 || to >= list.Items.Count) return;
-            var item = list.Items[from]; list.Items.RemoveAt(from); list.Items.Insert(to, item);
-            list.SelectedIndex = to; list.ScrollIntoView(item); UpdateButtons();
-        }
-        up.Click += (_, _) => Move(-1); down.Click += (_, _) => Move(1);
-        list.SelectionChanged += (_, _) => UpdateButtons();
-        list.DragItemsCompleted += (_, _) => UpdateButtons();
-        list.SelectedIndex = list.Items.Count > 0 ? 0 : -1;
-        UpdateButtons();
-        controls.Children.Add(up); controls.Children.Add(down); Subpage.Children.Add(controls);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var save = new Button { Content = T("Save"), Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
-        var cancel = new Button { Content = T("Cancel") };
-        save.Click += (_, _) =>
-        {
-            var settings = App.Current.Settings;
-            var previous = settings.TileOrder;
-            var draft = list.Items.Cast<ListViewItem>().Select(item => (string)item.Tag).ToList();
-            settings.TileOrder = draft.Concat(previous.Where(id => !draft.Contains(id))).ToList();
-            if (!SettingsStore.Save(settings))
-            {
-                settings.TileOrder = previous;
-                ErrorBar.Message = T("Could not save settings. Check access to the Llampec settings folder."); ErrorBar.IsOpen = true;
-                return;
-            }
-            _model.ApplyOrder(draft); RebuildTiles(); ShowMainPage();
-        };
-        cancel.Click += (_, _) => ShowSettings();
-        actions.Children.Add(save); actions.Children.Add(cancel); Subpage.Children.Add(actions);
-        Reposition();
-    }
-
-    private async void ShowAbout()
+private async void ShowAbout()
     {
         var assembly = typeof(App).Assembly;
         string version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion.Split('+')[0] ?? assembly.GetName().Version?.ToString(3) ?? "";
-        string copyright = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "PereLV";
+        string copyright = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright
+            ?? "Copyright (c) 2026 Pere Esquerdo Ramis";
         _dialogOpen = true;
         try
         {
             var content = new StackPanel { Spacing = 12 };
             content.Children.Add(new TextBlock
             {
-                Text = $"{T("Version")} {version}\n{copyright}\nMIT License",
+                Text = $"{T("Version")} {version}\n{copyright}\n{T("Open-source software · MIT License")}",
                 TextWrapping = TextWrapping.Wrap,
             });
             content.Children.Add(new HyperlinkButton
             {
-                Content = "Llampec · GitHub", NavigateUri = new Uri("https://github.com/PereLV/Llampec"),
+                Content = T("Source code on GitHub"), NavigateUri = new Uri("https://github.com/PereLV/Llampec"),
                 Padding = new Thickness(0),
             });
             content.Children.Add(new TextBlock { Text = T("Acknowledgements"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });

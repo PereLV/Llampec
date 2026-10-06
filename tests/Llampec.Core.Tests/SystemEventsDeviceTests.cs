@@ -6,6 +6,7 @@ using Xunit;
 namespace Llampec.Tests;
 
 /// <summary>Only the test's own hidden window is used; no system power/device changes occur.</summary>
+[Collection("SystemEvents window")]
 public sealed class SystemEventsDeviceTests
 {
     [Fact]

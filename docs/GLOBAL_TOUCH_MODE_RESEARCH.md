@@ -1,5 +1,11 @@
 # Investigación futura: modo táctil global
 
+**Estado actualizado el 2026-10-03: aparcada.** El usuario ha reafirmado que
+Llampec debe acercar ajustes existentes de forma sencilla y ligera, sin cambios
+profundos en Windows. Las propuestas de experimentos que siguen son antecedentes
+de investigación, no un plan activo. Solo reconsiderar esta función si aparece
+una vía compatible con ese criterio.
+
 Fecha de consulta: 2026-10-02. Trabajo posterior e independiente de
 **0.2.0-alpha.7**. La publicación de esa versión no depende de este experimento.
 Este documento amplía [Tablet controls](TABLET.md): no implementa un control,

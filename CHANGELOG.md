@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.2.0-alpha.8 — 2026-10-06
+
+- Simplify the panel editor to look like the finished panel: each group is a block,
+  buttons keep their real face and caption, and a small circular × at the top-left
+  corner disables a module. Drag a button by its face or a category by its heading,
+  without drag handles; the item floats under the pointer while an empty slot and
+  animated reflow show where it will land, as in Windows Quick Settings. Escape
+  restores the previous position. Keyboard users open a button's options with
+  Enter/Space/Shift+F10 and disable it with Delete.
+- Reuse editor views during a session and fill shared menus when opened, instead of
+  rebuilding the editor and its per-item menus after every change. The panel keeps
+  its size during a drag and repositions once on release.
+- Dropped editor items glide into their slot, and holding an item at the top or
+  bottom edge keeps scrolling. Both timers exist only during a drag.
+- Reduce idle CPU: Always on Top and Fullscreen hook window lifecycle events only
+  while the panel is shown, a pin exists or a fullscreen session is active, using
+  narrow event ranges instead of all object events (which included every cursor
+  and caret move). With the panel hidden, Always on Top processes only pinned
+  windows' events. With a moving mouse and a window changing title 20 times per
+  second, the hidden ARM64 Debug instance went from about 1 s to 0 ms of CPU per
+  20 s, and from 0.77 s to 0.17 s while a window is pinned.
+- An absent Logitech mouse (missing HID path) backs off to 5-minute retries after
+  2/5/15 s, since Windows device notifications report its return; a present but
+  silent device keeps 15-second retries.
+- Fix panel hit testing: the shadow's Z elevation moved to a non-interactive layer,
+  since a Z translation on the interactive surface displaced clickable areas from
+  the drawn controls by several DIP across the whole panel.
+
+- Add a visual panel editor from the main-panel pencil, with a fixed column/category
+  header and Save/Cancel footer. Choose 1–6 columns (default 3), create or rename
+  categories, and move icons within/between groups or reorder categories through
+  drag handles and keyboard menus. Empty groups remain drop destinations; deleting
+  a category appends its icons to the end of No category in visual order.
+- Disable and re-enable tile modules through the editor, using a static metadata
+  catalogue for inactive choices. Explicit DisabledModules releases actions,
+  services and shortcuts on Save; legacy hidden buttons retain their services.
+  Keep module configuration and add enabled icons at the end of No category,
+  without recreating previous pin, fullscreen or caffeine sessions.
+- Prepare restoration before module unloading; failed recovery keeps the module
+  enabled and retains ownership. Drain pending theme work, release caffeine power
+  requests, and keep shared tray/events and the independent Logitech service alive.
+- Reserve room for expanded primary/secondary taskbars when positioning the panel,
+  including conventional auto-hide and collapsed touch taskbars.
+- Retain only unfinished editor draft data when hidden and rebuild disposable
+  controls on reopening. Cancel discards the draft; Escape cancels an active drag
+  or hides the panel. Use local pointer capture on drag handles with an 8 DIP
+  threshold, geometric destinations and event-driven edge scrolling in one bounded
+  viewport, without a system drag payload or new idle timer.
+- Use validated task-button geometry when Explorer's tray host includes transparent
+  padding, removing the excess panel-to-taskbar gap. Missing or invalid shell
+  geometry keeps the conservative placement fallback.
+- Credit Pere Esquerdo Ramis in copyright, author metadata and About, with a clear
+  open-source/MIT label and a source-code link. GitHub publication remains deferred.
+- Coalesce panel layout work and avoid process/title reads on every active fullscreen
+  tick. Layout controls remain disposable and add no idle polling.
+- Keep fullscreen mouse-edge detection associated with its auto-hidden taskbar
+  when vertically stacked monitors put the hidden bar's HWND on the next screen.
+- Editor validation: 482 Core tests, including the opt-in native fullscreen smoke
+  test, and final ARM64/x64 Debug builds passed with no warnings or errors. GUI
+  checks covered responsive columns, category and cross-group icon moves, empty
+  category drops, creation, Cancel, and actual module unloading/re-enabling.
+  Physical touchscreen dragging remains untested. A local hidden ARM64 run with
+  all eleven modules enabled averaged 10.18 MiB private working set; the workload
+  and measurement limits are recorded in the panel notes.
+
+- Add Fullscreen: toggle the last active app from Llampec or with configurable
+  Ctrl+Alt+F, retaining its own controls. Show the active window and monitor;
+  restore the original state on toggle, normal exit or selection of another window.
+- Support fullscreen on all monitors and mouse-edge taskbar reveal where Windows
+  provides a taskbar, preserving the user's auto-hide and touch preferences.
+- Compensate measured window and client-area margins to cover the monitor,
+  including Chromium's frame margins. Visual hardware validation remains ongoing.
+
 ## 0.2.0-alpha.7 — 2026-10-02
 
 - Add a Touch taskbar toggle for Windows' touch-optimization preference, with

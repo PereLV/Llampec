@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using Llampec.Actions;
 using Llampec.Interop;
 using Llampec.Settings;
@@ -31,8 +31,10 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private ThemeScheduleView? _scheduleView;
     private CaffeineView? _caffeineView;
     private AlwaysOnTopView? _alwaysOnTopView;
+    private FullscreenView? _fullscreenView;
     private RotationView? _rotationView;
     private int _observedPinCount;
+    private bool _observedFullscreenActive;
     private bool _closing;
     private readonly PanelMotion _motion;
     private readonly PanelAcrylicBackdrop _panelBackdrop;
@@ -42,6 +44,9 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private int _idleStage;
     private bool _transitioning;
     private bool _placementPending;
+    private bool _repositioning;
+    private bool _sizeRepositionQueued;
+    private int _builtTileColumns;
     private bool _showMenuAfterOpen;
     private float _slideDistance;
     private User32.POINT _anchor;
@@ -124,104 +129,157 @@ public sealed partial class FlyoutWindow : Window, IDisposable
 
     private static FontIcon Icon(string glyph, double size = 20) => ActionIcons.Glyph(glyph, size);
 
-    private void BuildTiles()
+    private void BuildTiles(int? columns = null)
     {
-        for (int i = 0; i < 3; i++) Tiles.ColumnDefinitions.Add(new ColumnDefinition());
-        for (int i = 0; i < (_model.Tiles.Count + 2) / 3; i++) Tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        for (int i = 0; i < _model.Tiles.Count; i++)
+        _builtTileColumns = columns ?? EffectiveTileColumns();
+        Tiles.ColumnDefinitions.Add(new ColumnDefinition());
+        var groups = _model.GetTileGroups(App.Current.Settings);
+        bool hasCategories = groups.Any(group => group.CategoryId is not null);
+        int row = 0;
+        foreach (var group in groups)
         {
-            var tile = _model.Tiles[i];
-            var stack = new StackPanel { Spacing = 8 };
-            var face = new Grid();
-            face.ColumnDefinitions.Add(new ColumnDefinition());
-            if (tile.HasSubpage) face.ColumnDefinitions.Add(new ColumnDefinition());
-            var glyph = ActionIcons.Tile(tile.Id, tile.Glyph, tile.GlyphBadge);
-            ButtonBase button = tile.IsButton ? new Button() : new ToggleButton();
-            button.Content = glyph;
-            button.Height = 48;
-            button.Padding = new Thickness(0);
-            button.CornerRadius = tile.HasSubpage ? new CornerRadius(6, 0, 0, 6) : new CornerRadius(6);
-            button.HorizontalAlignment = HorizontalAlignment.Stretch;
-            button.HorizontalContentAlignment = HorizontalAlignment.Center;
-            AutomationProperties.SetName(button, tile.Title);
-            button.Click += (_, _) => tile.ToggleCommand.Execute(null);
-            face.Children.Add(button);
-            Button? more = null;
-            if (tile.HasSubpage)
+            if (group.CategoryId is not null || hasCategories)
             {
-                more = new Button
+                var heading = new TextBlock
                 {
-                    Content = Icon("\uE76C", 16), Padding = new Thickness(0), Height = 48,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    CornerRadius = new CornerRadius(0, 6, 6, 0), BorderThickness = new Thickness(0, 1, 1, 1),
+                    Text = group.CategoryId is null ? T("No category") : group.Name, FontSize = 13,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    TextWrapping = TextWrapping.Wrap,
                 };
-                AutomationProperties.SetName(more, UiText.Format("{0} options", tile.Title));
-                more.Click += (_, _) =>
-                {
-                    _model.OpenSubpage(tile);
-                };
-                Grid.SetColumn(more, 1);
-                face.Children.Add(more);
+                Tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                Grid.SetRow(heading, row++);
+                Tiles.Children.Add(heading);
             }
-            var title = new TextBlock { Text = tile.Title, FontSize = 12, TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
-            ToolTipService.SetToolTip(button, tile.Title);
-            var subtitle = new TextBlock
+            var grid = new Grid { ColumnSpacing = 12, RowSpacing = 16 };
+            for (int column = 0; column < _builtTileColumns; column++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition());
+            int rows = (group.Tiles.Count + _builtTileColumns - 1) / _builtTileColumns;
+            for (int tileRow = 0; tileRow < rows; tileRow++)
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            for (int index = 0; index < group.Tiles.Count; index++)
             {
-                FontSize = 12, TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-                Style = (Style)Root.Resources["TileStatusStyle"],
-            };
-            var caption = new StackPanel { Spacing = 2 };
-            caption.Children.Add(title);
-            caption.Children.Add(subtitle);
-            var pinnedCount = new TextBlock
+                var control = BuildTile(group.Tiles[index]);
+                Grid.SetColumn(control, index % _builtTileColumns);
+                Grid.SetRow(control, index / _builtTileColumns);
+                grid.Children.Add(control);
+            }
+            Tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(grid, row++);
+            Tiles.Children.Add(grid);
+        }
+    }
+
+    private FrameworkElement BuildTile(TileViewModel tile)
+    {
+        var stack = new StackPanel { Spacing = 8 };
+        var face = new Grid();
+        face.ColumnDefinitions.Add(new ColumnDefinition());
+        if (tile.HasSubpage) face.ColumnDefinitions.Add(new ColumnDefinition());
+        var glyph = ActionIcons.Tile(tile.Id, tile.Glyph, tile.GlyphBadge);
+        ButtonBase button = tile.IsButton ? new Button() : new ToggleButton();
+        button.Content = glyph;
+        button.Height = 48;
+        button.Padding = new Thickness(0);
+        button.CornerRadius = tile.HasSubpage ? new CornerRadius(6, 0, 0, 6) : new CornerRadius(6);
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        AutomationProperties.SetName(button, tile.Title);
+        button.Click += (_, _) => tile.ToggleCommand.Execute(null);
+        face.Children.Add(button);
+        Button? more = null;
+        if (tile.HasSubpage)
+        {
+            more = new Button
             {
-                FontSize = 11, TextAlignment = TextAlignment.Center,
-                Style = (Style)Root.Resources["TileStatusStyle"],
-                Visibility = Visibility.Collapsed,
+                Content = Icon("\uE76C", 16), Padding = new Thickness(0), Height = 48,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                CornerRadius = new CornerRadius(0, 6, 6, 0), BorderThickness = new Thickness(0, 1, 1, 1),
             };
+            AutomationProperties.SetName(more, UiText.Format("{0} options", tile.Title));
+            more.Click += (_, _) =>
+            {
+                _model.OpenSubpage(tile);
+            };
+            Grid.SetColumn(more, 1);
+            face.Children.Add(more);
+        }
+        var title = new TextBlock { Text = tile.Title, FontSize = 12, TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
+        ToolTipService.SetToolTip(button, tile.Title);
+        var subtitle = new TextBlock
+        {
+            FontSize = 12, TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Style = (Style)Root.Resources["TileStatusStyle"],
+        };
+        var caption = new StackPanel { Spacing = 2 };
+        caption.Children.Add(title);
+        caption.Children.Add(subtitle);
+        var pinnedCount = new TextBlock
+        {
+            FontSize = 11, TextAlignment = TextAlignment.Center,
+            Style = (Style)Root.Resources["TileStatusStyle"],
+            Visibility = Visibility.Collapsed,
+        };
+        if (tile.Id == "always-on-top")
+        {
+            subtitle.MaxLines = 2;
+            subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
+            caption.Children.Add(pinnedCount);
+        }
+        if (tile.Id == "fullscreen")
+        {
+            subtitle.MaxLines = 2;
+            subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
+        }
+        var busy = new ProgressBar
+        {
+            Height = 2, VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(6, 0, 6, 2), IsHitTestVisible = false,
+        };
+        Grid.SetColumnSpan(busy, 2);
+        face.Children.Add(busy);
+        stack.Children.Add(face);
+        stack.Children.Add(caption);
+        void Update()
+        {
+            button.IsEnabled = tile.IsAvailable && !tile.IsBusy;
+            if (button is ToggleButton toggle) toggle.IsChecked = tile.IsOn || tile.IsMixed;
+            if (more is not null)
+                more.Style = tile.IsOn || tile.IsMixed ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+            subtitle.Text = tile.CompactSubtitle ?? "";
+            subtitle.Visibility = tile.HasSubtitle ? Visibility.Visible : Visibility.Collapsed;
+            ToolTipService.SetToolTip(subtitle, tile.Subtitle);
+            ToolTipService.SetToolTip(button, string.IsNullOrEmpty(tile.Subtitle) ? tile.Title : $"{tile.Title}\n{tile.Subtitle}");
+            busy.Visibility = tile.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+            busy.IsIndeterminate = tile.IsBusy;
+            AutomationProperties.SetHelpText(button, tile.IsMixed ? T("Some displays are on") : tile.Subtitle ?? "");
             if (tile.Id == "always-on-top")
             {
-                subtitle.MaxLines = 2;
-                subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
-                caption.Children.Add(pinnedCount);
+                int count = App.Current.AlwaysOnTop?.PinnedCount ?? 0;
+                pinnedCount.Text = UiText.Format("{0} pinned", count);
+                pinnedCount.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                AutomationProperties.SetHelpText(button, $"{tile.Subtitle}. {pinnedCount.Text}");
             }
-            var busy = new ProgressBar
-            {
-                Height = 2, VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(6, 0, 6, 2), IsHitTestVisible = false,
-            };
-            Grid.SetColumnSpan(busy, 2);
-            face.Children.Add(busy);
-            stack.Children.Add(face);
-            stack.Children.Add(caption);
-            void Update()
-            {
-                button.IsEnabled = tile.IsAvailable && !tile.IsBusy;
-                if (button is ToggleButton toggle) toggle.IsChecked = tile.IsOn || tile.IsMixed;
-                if (more is not null)
-                    more.Style = tile.IsOn || tile.IsMixed ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
-                subtitle.Text = tile.CompactSubtitle ?? "";
-                subtitle.Visibility = tile.HasSubtitle ? Visibility.Visible : Visibility.Collapsed;
-                ToolTipService.SetToolTip(subtitle, tile.Subtitle);
-                ToolTipService.SetToolTip(button, string.IsNullOrEmpty(tile.Subtitle) ? tile.Title : $"{tile.Title}\n{tile.Subtitle}");
-                busy.Visibility = tile.IsBusy ? Visibility.Visible : Visibility.Collapsed;
-                busy.IsIndeterminate = tile.IsBusy;
-                AutomationProperties.SetHelpText(button, tile.IsMixed ? T("Some displays are on") : tile.Subtitle ?? "");
-                if (tile.Id == "always-on-top")
-                {
-                    int count = App.Current.AlwaysOnTop?.PinnedCount ?? 0;
-                    pinnedCount.Text = UiText.Format("{0} pinned", count);
-                    pinnedCount.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-                    AutomationProperties.SetHelpText(button, $"{tile.Subtitle}. {pinnedCount.Text}");
-                }
-            }
-            Observe(tile, Update, _unsubscribe);
-            Grid.SetColumn(stack, i % 3);
-            Grid.SetRow(stack, i / 3);
-            Tiles.Children.Add(stack);
         }
+        Observe(tile, Update, _unsubscribe);
+        return stack;
+    }
+
+    private int EffectiveTileColumns()
+    {
+        if (!_hasAnchor) return App.Current.Settings.TileColumns;
+        var (work, scale) = PlacementArea();
+        return EffectiveTileColumns(work, scale);
+    }
+
+    private int EffectiveTileColumns(User32.RECT work, double scale)
+    {
+        double widthDip = work.Width / scale - 24;
+        int available = Math.Max(1, (int)Math.Floor(widthDip / 120));
+        int requested = _utilityPage == UtilityPage.Editor && _layoutDraft is not null
+            ? _layoutDraft.Columns : App.Current.Settings.TileColumns;
+        return Math.Min(requested, available);
     }
 
     private static void Observe(TileViewModel tile, Action update, List<Action> subscriptions)
@@ -242,6 +300,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         Tiles.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
         Subpage.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         BackButton.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        EditButton.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
         Heading.Text = _model.Subpage?.Title ?? "Llampec";
         if (_model.Subpage is { } page)
         {
@@ -259,6 +318,11 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             {
                 _alwaysOnTopView = new AlwaysOnTopView(alwaysOnTop, hold => _dialogOpen = hold);
                 Subpage.Children.Add(_alwaysOnTopView);
+            }
+            if (page.Id == "fullscreen" && App.Current.Fullscreen is { } fullscreen)
+            {
+                _fullscreenView = new FullscreenView(fullscreen);
+                Subpage.Children.Add(_fullscreenView);
             }
             if (page.Id == "rotation" && App.Current.Rotation is { } rotation)
             {
@@ -305,24 +369,43 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private void Reposition(bool allowHidden)
     {
         // A transition owns its fixed viewport until completion.
-        if (_disposed || !_hasAnchor || (!allowHidden && !AppWindow.IsVisible)) return;
+        if (_disposed || _repositioning || !_hasAnchor || (!allowHidden && !AppWindow.IsVisible)) return;
         if (_transitioning) { _placementPending = true; return; }
-        _placementPending = false;
-        // Keep the opening monitor even if the pointer moves during layout/animation.
-        var (work, scale) = PlacementArea();
-        int margin = (int)Math.Round(12 * scale);
-        int visibleWidth = Math.Min((int)Math.Round(360 * scale), Math.Max(1, work.Width - 2 * margin));
-        int width = visibleWidth + 2 * margin;
-        // Size from the actual wrapped captions/subtitles, rather than a fixed row estimate.
-        // Keep the footer visible; only scroll when the monitor's work area requires it.
-        Root.Measure(new Windows.Foundation.Size(visibleWidth / scale, double.PositiveInfinity));
-        double heightDip = Root.DesiredSize.Height;
-        int height = Math.Min((int)Math.Ceiling(heightDip * scale) + 2 * margin, work.Height);
-        var bounds = new RectInt32(work.Right - width, work.Bottom - height, width, height);
-        _slideDistance = (float)(height / scale);
-        if (AppWindow.Size.Width != width || AppWindow.Size.Height != height
-            || AppWindow.Position.X != bounds.X || AppWindow.Position.Y != bounds.Y)
-            AppWindow.MoveAndResize(bounds);
+        // A drag preview reflows groups; resizing the bottom-anchored panel would
+        // move the content under the pointer and make the destination oscillate.
+        if (_panelEditor?.DragInProgress == true) return;
+        _repositioning = true;
+        try
+        {
+            _placementPending = false;
+            // Keep the opening monitor even if the pointer moves during layout/animation.
+            var (work, scale) = PlacementArea();
+            int margin = (int)Math.Round(12 * scale);
+            bool mainPage = _utilityPage == UtilityPage.None && !_model.IsSubpageOpen;
+            bool editing = _utilityPage == UtilityPage.Editor && _layoutDraft is not null;
+            int columns = EffectiveTileColumns(work, scale);
+            if (editing) _panelEditor?.SetColumns(columns);
+            if (mainPage && Tiles.Children.Count > 0 && _builtTileColumns != columns) RebuildTiles(columns);
+            int desiredWidthDip = mainPage || editing ? Math.Max(180, columns * 120) : 360;
+            int visibleWidth = Math.Min((int)Math.Round(desiredWidthDip * scale), Math.Max(1, work.Width - 2 * margin));
+            int width = visibleWidth + 2 * margin;
+            // Size from the actual wrapped captions/subtitles, rather than a fixed row estimate.
+            // Keep the footer visible; only scroll when the monitor's work area requires it.
+            Root.Measure(new Windows.Foundation.Size(visibleWidth / scale, double.PositiveInfinity));
+            double heightDip = Root.DesiredSize.Height;
+            int height = Math.Min((int)Math.Ceiling(heightDip * scale) + 2 * margin, work.Height);
+            // Measure the viewport at the height we will actually show. A final
+            // infinite-height measure leaves long pages without a bounded scroll
+            // viewport when the monitor caps the native window's height.
+            double shownHeightDip = Math.Max(1, (height - 2 * margin) / scale);
+            Root.Measure(new Windows.Foundation.Size(visibleWidth / scale, shownHeightDip));
+            var bounds = new RectInt32(work.Right - width, work.Bottom - height, width, height);
+            _slideDistance = (float)(height / scale);
+            if (AppWindow.Size.Width != width || AppWindow.Size.Height != height
+                || AppWindow.Position.X != bounds.X || AppWindow.Position.Y != bounds.Y)
+                AppWindow.MoveAndResize(bounds);
+        }
+        finally { _repositioning = false; }
     }
 
     private void CapturePlacement()
@@ -351,20 +434,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _anchor.X = Math.Clamp(_anchor.X, info.rcMonitor.Left, Math.Max(info.rcMonitor.Left, info.rcMonitor.Right - 1));
         _anchor.Y = Math.Clamp(_anchor.Y, info.rcMonitor.Top, Math.Max(info.rcMonitor.Top, info.rcMonitor.Bottom - 1));
         double scale = User32.GetDpiForMonitor(_anchorMonitor, 0, out uint dpiX, out _) == 0 ? dpiX / 96.0 : 1.0;
-        var work = info.rcWork;
-        if (Llampec.Platform.TabletTaskbar.ReadMode() == Llampec.Platform.TaskbarMode.TabletOptimized)
-        {
-            // Tablet rcWork can reserve only the collapsed strip. Reserve the shell-reported
-            // taskbar bounds so expanding it cannot cover our footer after a rotation.
-            // ABM_GETTASKBARPOS reports the system taskbar, not an arbitrary monitor's bar.
-            // https://learn.microsoft.com/windows/win32/shell/abm-gettaskbarpos
-            var bar = new Shell32.APPBARDATA { cbSize = (uint)Marshal.SizeOf<Shell32.APPBARDATA>() };
-            if (Shell32.SHAppBarMessage(Shell32.ABM_GETTASKBARPOS, ref bar) != 0 && bar.uEdge == 3
-                && bar.rc.Left >= info.rcMonitor.Left && bar.rc.Right <= info.rcMonitor.Right
-                && bar.rc.Right > bar.rc.Left && bar.rc.Top > work.Top
-                && bar.rc.Bottom == info.rcMonitor.Bottom && bar.rc.Top < bar.rc.Bottom)
-                work.Bottom = Math.Min(work.Bottom, bar.rc.Top);
-        }
+        var work = Llampec.Platform.PanelPlacement.ReserveTaskbarArea(
+            _anchorMonitor, info.rcMonitor, info.rcWork, scale);
         return (work, scale);
     }
 
@@ -375,7 +446,13 @@ public sealed partial class FlyoutWindow : Window, IDisposable
 
     private void OnPageSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (AppWindow.IsVisible) DispatcherQueue.TryEnqueue(Reposition);
+        if (_disposed || !AppWindow.IsVisible || _sizeRepositionQueued) return;
+        _sizeRepositionQueued = true;
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            _sizeRepositionQueued = false;
+            if (!_disposed) Reposition();
+        })) _sizeRepositionQueued = false;
     }
 
     public void Toggle()
@@ -403,6 +480,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _panelHidden?.TrySetCanceled();
         _panelHidden = null;
         App.Current.AlwaysOnTop?.CaptureTarget();
+        App.Current.Fullscreen?.CaptureTarget();
         long started = Stopwatch.GetTimestamp();
         _idleTimer.Stop();
         _closing = false;
@@ -412,16 +490,16 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             _transitioning = false;
             CapturePlacement();
             ApplyTheme();
-            if (Tiles.Children.Count == 0) BuildTiles();
+            if (Tiles.Children.Count == 0 && _layoutDraft is null) BuildTiles();
             _panelBackdrop.Resume();
-            ShowMainPage();
+            if (_layoutDraft is not null) ShowPanelEditor(); else ShowMainPage();
             try { _model.RefreshAll(); }
             catch (Exception ex)
             {
                 ErrorBar.Message = ex.Message;
                 ErrorBar.IsOpen = true;
             }
-            App.Current.Scheduler?.SetStatusVisible(true);
+            App.Current.Scheduler?.SetStatusVisible(_layoutDraft is null);
             Reposition(allowHidden: true);
         }
         bool useMotion = _uiSettings.AnimationsEnabled;
@@ -445,7 +523,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
 
     public void HidePanel()
     {
-        if (_disposed || !AppWindow.IsVisible || _closing) return;
+        if (_disposed || _savingEditor || !AppWindow.IsVisible || _closing) return;
         _showMenuAfterOpen = false;
         _closing = true;
         _transitioning = true;
@@ -456,6 +534,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     {
         AppWindow.Hide();
         App.Current.AlwaysOnTop?.ReleaseTarget();
+        App.Current.Fullscreen?.ReleaseTarget();
         App.Current.Scheduler?.SetStatusVisible(false);
         _closing = false;
         _transitioning = false;
@@ -522,7 +601,15 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private void OnMenu(object sender, RoutedEventArgs e) => ShowSettings();
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != VirtualKey.Escape || _dialogOpen) return;
+        if (e.Key != VirtualKey.Escape) return;
+        if (_utilityPage == UtilityPage.Editor)
+        {
+            if (_panelEditor?.DragInProgress == true)
+            { _panelEditor.CancelDrag(); e.Handled = true; return; }
+            if (_dialogOpen) return;
+            HidePanel(); e.Handled = true; return;
+        }
+        if (_dialogOpen) return;
         if (_utilityPage != UtilityPage.None || _model.IsSubpageOpen) GoBack(); else HidePanel();
         e.Handled = true;
     }
@@ -555,6 +642,27 @@ public sealed partial class FlyoutWindow : Window, IDisposable
                 User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE | 0x0200 /* NOOWNERZORDER */);
     }
 
+    public void OpenFullscreen()
+    {
+        if (_disposed) return;
+        ShowPanel();
+        if (_model.Tiles.FirstOrDefault(tile => tile.Id == "fullscreen") is { } tile)
+            _model.OpenSubpage(tile);
+    }
+
+    public void OnFullscreenChanged()
+    {
+        if (_disposed) return;
+        bool active = App.Current.Fullscreen?.IsActive == true;
+        bool entered = active && !_observedFullscreenActive;
+        _observedFullscreenActive = active;
+        // Keep an already active settings panel usable while its target expands.
+        if (entered && !_closing && AppWindow.IsVisible && User32.GetForegroundWindow() == _hwnd)
+            User32.SetWindowPos(_hwnd, -1, 0, 0, 0, 0,
+                User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE | 0x0200 /* NOOWNERZORDER */);
+        if (!_closing && AppWindow.IsVisible) Reposition();
+    }
+
     private void ShowMenu()
     {
         if (_disposed || !AppWindow.IsVisible || _closing) return;
@@ -577,6 +685,8 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        ReleasePanelEditor();
+        _layoutDraft = null;
         _panelHidden?.TrySetCanceled();
         _panelHidden = null;
         AppWindow.Hide();
@@ -586,6 +696,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _scheduleView?.Dispose();
         _caffeineView?.Dispose();
         _alwaysOnTopView?.Dispose();
+        _fullscreenView?.Dispose();
         _rotationView?.Dispose();
         _logitechMouseView?.Dispose();
         foreach (var unsubscribe in _unsubscribe.Concat(_subUnsubscribe)) unsubscribe();

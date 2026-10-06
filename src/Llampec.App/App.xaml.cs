@@ -1,5 +1,6 @@
 using Llampec.Actions;
 using Llampec.Actions.AlwaysOnTop;
+using Llampec.Actions.Fullscreen;
 using Llampec.Actions.Rotation;
 using Llampec.Diagnostics;
 using Llampec.Devices.Logitech;
@@ -9,6 +10,7 @@ using Llampec.Settings;
 using Llampec.Tray;
 using Llampec.ViewModels;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 
 namespace Llampec;
 
@@ -25,17 +27,22 @@ public partial class App : Application
     private bool _exiting;
     private Actions.Caffeine.CaffeineAction? _caffeine;
     private AlwaysOnTopAction? _alwaysOnTopAction;
+    private FullscreenAction? _fullscreenAction;
     private RotationAction? _rotationAction;
     private ConfigurableHotkey? _alwaysOnTopHotkey;
+    private ConfigurableHotkey? _fullscreenHotkey;
+    private DispatcherQueueTimer? _fullscreenTimer;
     private readonly SemaphoreSlim _logitechSettingsGate = new(1, 1);
     public static new App Current => (App)Application.Current;
     public AppSettings Settings { get; private set; } = new();
     public AppTheme? PreviewTheme { get; private set; }
     public ThemeScheduler? Scheduler { get; private set; }
     public AlwaysOnTopService? AlwaysOnTop { get; private set; }
+    public FullscreenService? Fullscreen { get; private set; }
     public LogitechMouseService? LogitechMouse { get; private set; }
     public DisplayOrientationService? Rotation { get; private set; }
     public string? AlwaysOnTopHotkeyError => _alwaysOnTopHotkey?.Error;
+    public string? FullscreenHotkeyError => _fullscreenHotkey?.Error;
 
     public App()
     {
@@ -84,15 +91,12 @@ public partial class App : Application
         try
         {
             _events = new SystemEvents();
-            Settings.AlwaysOnTop ??= new();
-            AlwaysOnTop = new AlwaysOnTopService(() => Settings.AlwaysOnTop);
-            _alwaysOnTopAction = new AlwaysOnTopAction(AlwaysOnTop);
-            _caffeine = new Actions.Caffeine.CaffeineAction(() => Settings.Caffeine ?? new());
-            Rotation = new DisplayOrientationService();
-            _rotationAction = new RotationAction(Rotation);
-            _events.Suspending += (_, _) => _caffeine.Stop();
-            _events.ClockChanged += (_, _) => _caffeine.Refresh();
-            var model = new FlyoutViewModel(ActionCatalog.Create(_events, _caffeine, _alwaysOnTopAction, _rotationAction), Settings);
+            foreach (var module in ModuleCatalog.All)
+                if (!Settings.DisabledModules.Contains(module.Id)) EnableModule(module.Id);
+            _events.Suspending += (_, _) => _caffeine?.Stop();
+            _events.ClockChanged += (_, _) => _caffeine?.Refresh();
+            var model = new FlyoutViewModel(CurrentActions(), Settings);
+            _model = model;
             var window = new FlyoutWindow(model);
             _window = window;
             // Display topology, rotation policy and posture can change with the panel open.
@@ -100,7 +104,7 @@ public partial class App : Application
             bool environmentRefreshQueued = false;
             void QueueEnvironmentRefresh()
             {
-                if (_exiting || environmentRefreshQueued) return;
+                if (_exiting || _modulesChanging || environmentRefreshQueued) return;
                 environmentRefreshQueued = true;
                 if (!window.DispatcherQueue.TryEnqueue(() =>
                 {
@@ -108,7 +112,8 @@ public partial class App : Application
                     if (_exiting) return;
                     try
                     {
-                        Rotation.Refresh();
+                        Rotation?.Refresh();
+                        Fullscreen?.OnEnvironmentChanged();
                         foreach (var tile in model.Tiles.Where(t => t.Id is "taskbar-autohide" or "touch-taskbar")) tile.Refresh();
                         window.OnDisplayEnvironmentChanged();
                     }
@@ -119,11 +124,6 @@ public partial class App : Application
             _events.DisplayChanged += (_, _) => QueueEnvironmentRefresh();
             _events.Resumed += (_, _) => QueueEnvironmentRefresh();
             _events.TaskbarCreated += (_, _) => QueueEnvironmentRefresh();
-            if (model.Tiles.FirstOrDefault(t => t.Id == "touch-taskbar") is { } touchTaskbar)
-                touchTaskbar.Action.Changed += (_, _) => window.DispatcherQueue.TryEnqueue(() =>
-                {
-                    if (!_exiting) model.Tiles.FirstOrDefault(t => t.Id == "taskbar-autohide")?.Refresh();
-                });
             LogitechMouse = new LogitechMouseService(shortcut =>
             {
                 if (new KeyboardShortcut(shortcut).Send())
@@ -139,11 +139,9 @@ public partial class App : Application
                     LogitechMouse.NotifyDeviceChange();
             };
             _ = StartLogitechMouseAsync();
-            AlwaysOnTop.SelectionRequested += (_, _) => window.OpenAlwaysOnTop();
-            AlwaysOnTop.Changed += (_, _) => window.OnAlwaysOnTopChanged();
-            Scheduler = new ThemeScheduler(window.DispatcherQueue, _events);
-            Scheduler.StatusChanged += (_, _) => model.Tiles.FirstOrDefault(t => t.Id == "theme")?.Refresh();
-            window.DispatcherQueue.TryEnqueue(() => _ = Scheduler.ApplyAsync());
+            ConfigureFullscreenTimer();
+            if (Scheduler is not null)
+                window.DispatcherQueue.TryEnqueue(() => _ = Scheduler?.ApplyAsync());
             _tray = new TrayIcon(_events, "Llampec");
             _tray.Activated += (_, _) =>
             {
@@ -153,19 +151,22 @@ public partial class App : Application
             _tray.ContextMenuRequested += (_, _) => window.ShowTrayMenu();
             _events.HotkeyPressed += (_, id) =>
             {
+                if (_modulesChanging) return;
                 if (id == 1) window.Toggle();
                 else if (id == _alwaysOnTopHotkey?.RegisteredId)
                 {
-                    AlwaysOnTop.ToggleForeground();
-                    if (AlwaysOnTop.Error is not null) window.OpenAlwaysOnTop();
+                    AlwaysOnTop?.ToggleForeground();
+                    if (AlwaysOnTop?.Error is not null) window.OpenAlwaysOnTop();
+                }
+                else if (id == _fullscreenHotkey?.RegisteredId)
+                {
+                    Fullscreen?.ToggleForeground();
+                    if (Fullscreen?.Error is not null) window.OpenFullscreen();
                 }
             };
             RegisterOpenPanelHotkey();
-            _alwaysOnTopHotkey = new ConfigurableHotkey(2, 3,
-                (id, hotkey) => _events.RegisterHotkey(id, hotkey.Modifiers, hotkey.VirtualKey),
-                _events.UnregisterHotkey);
-            _alwaysOnTopHotkey.Initialize(Settings.AlwaysOnTop.Hotkey);
-            _events.SettingChanged += (_, _) => AlwaysOnTop.ApplyAppearance();
+            LogModuleRuntime();
+            _events.SettingChanged += (_, _) => AlwaysOnTop?.ApplyAppearance();
             _showWait = ThreadPool.RegisterWaitForSingleObject(_showEvent,
                 (_, _) => window.DispatcherQueue.TryEnqueue(window.ShowPanel), null, -1, false);
             _exitWait = ThreadPool.RegisterWaitForSingleObject(_exitEvent,
@@ -275,6 +276,26 @@ public partial class App : Application
         return success;
     }
 
+    public bool TrySetFullscreenHotkey(string text, out string? error)
+    {
+        if (_fullscreenHotkey is null)
+        {
+            error = "Shortcut is already in use.";
+            return false;
+        }
+        bool success = _fullscreenHotkey.TrySet(text, normalized =>
+        {
+            var preferences = Settings.Fullscreen;
+            string previous = preferences.Hotkey;
+            preferences.Hotkey = normalized;
+            if (SettingsStore.Save(Settings)) return true;
+            preferences.Hotkey = previous;
+            return false;
+        });
+        error = _fullscreenHotkey.Error;
+        return success;
+    }
+
     public bool TryRestartAsAdministrator(out string? error)
     {
         if (!AdministratorRestart.TryStart(out error)) return false;
@@ -286,8 +307,16 @@ public partial class App : Application
     {
         if (_exiting) return;
         _exiting = true;
+        // A save may be awaiting native restoration. Let it finish its rollback/
+        // cleanup before releasing the shared dispatcher, events and services.
+        await _moduleSettingsGate.WaitAsync();
+        _moduleSettingsGate.Release();
         _showWait?.Unregister(null);
         _exitWait?.Unregister(null);
+        _fullscreenTimer?.Stop();
+        _fullscreenHotkey?.Dispose();
+        _fullscreenAction?.Dispose();
+        Fullscreen?.Dispose();
         // Keep the dispatcher pumping: display restoration broadcasts native messages.
         try { if (Rotation is { } rotation) await rotation.DisposeAsync(); }
         catch (Exception ex) { Log.Error("Could not complete pending display recovery on exit.", ex); }
@@ -298,7 +327,7 @@ public partial class App : Application
         _alwaysOnTopHotkey?.Dispose();
         _alwaysOnTopAction?.Dispose();
         AlwaysOnTop?.Dispose();
-        Log.Info("Llampec exiting: session pins and global shortcuts released.");
+        Log.Info("Llampec exiting: fullscreen, session pins and global shortcuts released.");
         _caffeine?.Dispose();
         _tray?.Dispose();
         _events?.Dispose();
@@ -306,6 +335,7 @@ public partial class App : Application
         _exitEvent?.Dispose();
         _mutex?.Dispose();
         _window?.Dispose();
+        _model?.Dispose();
         Exit();
     }
 }

@@ -405,12 +405,35 @@ public class LogitechMouseServiceTests
         public void Clear() { log.Add("clear"); Journal = null; }
     }
 
+    [Fact]
+    public async Task Absent_mouse_backs_off_to_five_minutes_and_device_change_reconnects_at_once()
+    {
+        var backend = new Backend { Available = false, Absent = true }; var store = new Store(backend.Log); var time = new ManualTime();
+        await using var service = new LogitechMouseService(_ => { }, backend, store, time);
+        await service.ApplyAsync(Enabled());
+        foreach (int seconds in new[] { 2, 5, 15 })
+        {
+            await service.ScanAsync();
+            Assert.Equal(TimeSpan.FromSeconds(seconds), Assert.Single(time.ActiveTimers).Delay);
+            time.Advance(TimeSpan.FromSeconds(seconds));
+            await backend.NextOpenAsync();
+        }
+        await service.ScanAsync();
+        Assert.Equal(TimeSpan.FromMinutes(5), Assert.Single(time.ActiveTimers).Delay);
+
+        backend.Available = true;
+        service.NotifyDeviceChange();
+        await WaitForAsync(service, status => status.Connected);
+        Assert.Empty(time.ActiveTimers);
+    }
+
     private sealed class Backend : ILogitechMouseBackend
     {
         public List<string> Log { get; } = [];
         public List<LogitechMouseIdentity> OpenedIdentities { get; } = [];
         public List<Session> Sessions { get; } = [];
         public bool Available = true;
+        public bool Absent;
         public ushort HardwareDpi = 1000;
         public string? ReportedUnitId;
         public Exception? ApplyError;
@@ -428,7 +451,7 @@ public class LogitechMouseServiceTests
             ct.ThrowIfCancellationRequested();
             OpenedIdentities.Add(identity);
             _opens.Writer.TryWrite(OpenedIdentities.Count);
-            if (!Available) throw new IOException("Selected mouse missing.");
+            if (!Available) throw Absent ? new LogitechMouseAbsentException("Selected mouse missing.") : new IOException("Selected mouse missing.");
             var session = new Session(this, identity);
             Sessions.Add(session);
             return Task.FromResult<ILogitechMouseSession>(session);

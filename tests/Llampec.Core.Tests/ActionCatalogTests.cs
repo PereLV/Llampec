@@ -10,6 +10,9 @@ using Xunit;
 
 namespace Llampec.Tests;
 
+// SystemEvents owns one process-wide native window class; these readers must not
+// construct a second instance alongside SystemEventsDeviceTests.
+[Collection("SystemEvents window")]
 public class ActionCatalogTests
 {
     [Fact]
@@ -51,6 +54,20 @@ public class ActionCatalogTests
 
         var taskbar = Assert.Single(actions.OfType<TaskbarAutoHideAction>());
         Assert.Equal(ActionKind.Toggle, taskbar.Kind);
+    }
+
+    [Fact]
+    public void Catalog_appends_fullscreen_without_reordering_existing_actions()
+    {
+        using var events = new SystemEvents();
+        using var caffeine = new Llampec.Actions.Caffeine.CaffeineAction(() => new());
+        using var service = new Llampec.Actions.Fullscreen.FullscreenService();
+        using var fullscreen = new Llampec.Actions.Fullscreen.FullscreenAction(service);
+        var previous = ActionCatalog.Create(events, caffeine);
+        var current = ActionCatalog.Create(events, caffeine, fullscreen: fullscreen);
+        Assert.Equal(previous.Select(a => a.Id).Append("fullscreen"), current.Select(a => a.Id));
+        Assert.Same(fullscreen, current[^1]);
+        Assert.Equal(ActionKind.ToggleWithSubpage, fullscreen.Kind);
     }
 
     [Fact]

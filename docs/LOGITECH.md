@@ -48,8 +48,12 @@ connection. A successful verified restoration removes the recovery record.
 If the mouse disconnects first or the process is interrupted, the record remains
 so a later connection can restore it before applying the saved preferences again.
 
-HID read failures and Windows device/power events drive reconnection. Retries are
-bounded and back off while the configured mouse is absent. A healthy connected
+HID read failures and Windows device/power events drive reconnection. Retries back
+off after 2, 5 and 15 seconds. When the configured HID path is absent, its return
+is reported by Windows device notifications, so further retries wait 5 minutes
+only to cover a missed notification. A present device that does not answer, such
+as a receiver whose mouse is switched off, keeps 15-second retries because Windows
+gives no notice when the mouse wakes. A healthy connected
 session waits for input without periodic HID queries, battery polling or keep-alive.
 Suspension stops input dispatch; resuming establishes a fresh session. No kernel
 driver, Python/Qt runtime or separate background process is installed.

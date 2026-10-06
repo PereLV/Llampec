@@ -201,6 +201,17 @@ public sealed class AlwaysOnTopService : IDisposable
         finally { _mutating = false; Refresh(); }
     }
 
+    /// <summary>
+    /// Restore session-owned pins before unloading the module. A failed restoration keeps its
+    /// claim, border and service alive so the host can offer recovery instead of abandoning it.
+    /// </summary>
+    public bool TryDeactivate()
+    {
+        if (_mutating) return false;
+        UnpinAll();
+        return _pins.Count == 0;
+    }
+
     private bool Unpin(Pin pin)
     {
         var current = ReadMatching(pin.Identity);
@@ -337,6 +348,13 @@ public sealed class AlwaysOnTopService : IDisposable
     private void HandleWindowChanged(WindowChange change)
     {
         if (_disposed) return;
+        // While the panel is hidden nobody sees the selector: remember the last external
+        // app and follow only pinned windows. Opening the panel refreshes everything.
+        if (!_targetFrozen)
+        {
+            if (change.Foreground) { RememberForeground(); return; }
+            if (!_pins.ContainsKey(change.Handle)) return;
+        }
         // Moving an unrelated window should not rebuild the selector for each animation frame.
         if (change.PositionOnly)
         {
@@ -352,8 +370,21 @@ public sealed class AlwaysOnTopService : IDisposable
         Refresh();
     }
 
+    private bool WindowTrackingNeeded => _targetFrozen || _pins.Count != 0;
+
+    /// <summary>Window events matter only while the panel shows them or a pin must be followed.</summary>
+    private void UpdateWindowTracking()
+    {
+        if (_disposed) return;
+        // Hooks belong to the owner thread's message loop.
+        if (_context is not null && Environment.CurrentManagedThreadId != _ownerThread)
+        { _context.Post(_ => UpdateWindowTracking(), null); return; }
+        _windows.SetWindowTracking(WindowTrackingNeeded);
+    }
+
     private void PublishIfChanged()
     {
+        UpdateWindowTracking();
         var state = (_target, TargetTitle, IsTargetPinned, Error);
         if (_publishedState == state && _publishedWindows.SequenceEqual(_availableWindows)) return;
         _publishedState = state;

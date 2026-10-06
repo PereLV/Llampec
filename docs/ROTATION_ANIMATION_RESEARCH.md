@@ -1,5 +1,10 @@
 # Animación nativa de rotación: investigación futura
 
+**Estado actualizado el 2026-10-03: aparcada.** Se mantiene la rotación manual
+actual. Los experimentos descritos abajo se conservan como antecedentes, no como
+un plan activo: la animación solo merece retomarse si una vía pública y sencilla
+encaja con la filosofía ligera de Llampec, sin mecanismos auxiliares complejos.
+
 Fecha de revisión: **2026-10-02**. Alcance: trabajo posterior a **0.2.0-alpha.7**.
 Este documento no cambia la implementación ni condiciona la publicación de esa
 versión. En esta investigación no se ejecutaron nuevos giros, cambios de sensor,

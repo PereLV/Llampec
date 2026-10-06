@@ -5,12 +5,13 @@ using Llampec.Settings;
 namespace Llampec.ViewModels;
 
 /// <summary>Presents one <see cref="IQuickAction"/> as a tile. Marshals action events to the UI thread.</summary>
-public sealed class TileViewModel : ObservableObject
+public sealed class TileViewModel : ObservableObject, IDisposable
 {
     private readonly DispatcherQueue _dispatcher;
     private readonly Action<TileViewModel>? _openSubpage;
     private readonly Func<Func<Task>, Task>? _runWithPanelHidden;
     private bool _executing;
+    private bool _disposed;
 
     public TileViewModel(IQuickAction action, DispatcherQueue dispatcher, Action<TileViewModel>? openSubpage, Func<Func<Task>, Task>? runWithPanelHidden, bool isRadioItem = false)
     {
@@ -55,7 +56,7 @@ public sealed class TileViewModel : ObservableObject
     public string? GlyphBadge => Action.GlyphBadge;
     public bool HasGlyphBadge => !string.IsNullOrEmpty(Action.GlyphBadge);
     public bool IsAvailable => Action.IsAvailable;
-    public bool IsBusy => _executing || Action.IsBusy;
+    public bool IsBusy => _executing || Action.IsBusy || SubTiles.Any(tile => tile.IsBusy);
     public bool IsOn => Action.State == ActionState.On;
     public bool IsMixed => Action.State == ActionState.Mixed;
     public bool IsButton => Action.Kind == ActionKind.Button;
@@ -69,7 +70,7 @@ public sealed class TileViewModel : ObservableObject
 
     private void Execute()
     {
-        if (IsBusy || !IsAvailable) return;
+        if (_disposed || IsBusy || !IsAvailable) return;
         _ = ExecuteAndRefreshThemeAsync();
     }
 
@@ -97,6 +98,7 @@ public sealed class TileViewModel : ObservableObject
 
     public void Refresh()
     {
+        if (_disposed) return;
         Action.Refresh();
         foreach (var sub in SubTiles)
         {
@@ -121,7 +123,16 @@ public sealed class TileViewModel : ObservableObject
 
     private void RaiseAll()
     {
+        if (_disposed) return;
         // Cheap and simple: the tile re-reads every bound property.
         OnPropertyChanged(string.Empty);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Action.Changed -= OnActionChanged;
+        foreach (var child in SubTiles) child.Dispose();
     }
 }

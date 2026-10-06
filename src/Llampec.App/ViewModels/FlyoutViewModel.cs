@@ -5,19 +5,47 @@ using Llampec.Settings;
 namespace Llampec.ViewModels;
 
 /// <summary>The panel: an ordered list of tiles and, optionally, an open sub-page.</summary>
-public sealed class FlyoutViewModel : ObservableObject
+public sealed class FlyoutViewModel : ObservableObject, IDisposable
 {
     private TileViewModel? _subpage;
 
     public FlyoutViewModel(IReadOnlyList<IQuickAction> actions, AppSettings settings)
     {
         var dispatcher = DispatcherQueue.GetForCurrentThread();
+        CatalogIds = ModuleCatalog.All.Select(module => module.Id).ToArray();
         var ordered = OrderAndFilter(actions, settings);
         Tiles = ordered.Select(a => new TileViewModel(a, dispatcher, OpenSubpage, RunWithPanelHidden)).ToList();
         BackCommand = new RelayCommand(CloseSubpage);
     }
 
     public IReadOnlyList<TileViewModel> Tiles { get; }
+    /// <summary>Complete action ids, including hidden tiles, for preserving category assignments.</summary>
+    public IReadOnlyList<string> CatalogIds { get; }
+
+    public void ReplaceActions(IReadOnlyList<IQuickAction> actions, AppSettings settings)
+    {
+        CloseSubpage();
+        var tiles = (List<TileViewModel>)Tiles;
+        foreach (var tile in tiles) tile.Dispose();
+        tiles.Clear();
+        var dispatcher = DispatcherQueue.GetForCurrentThread();
+        tiles.AddRange(OrderAndFilter(actions, settings)
+            .Select(action => new TileViewModel(action, dispatcher, OpenSubpage, RunWithPanelHidden)));
+    }
+
+    public void Dispose()
+    {
+        foreach (var tile in Tiles) tile.Dispose();
+    }
+
+    public IReadOnlyList<TileViewGroup> GetTileGroups(AppSettings settings)
+    {
+        var byId = Tiles.ToDictionary(tile => tile.Id, StringComparer.Ordinal);
+        return TileLayout.BuildGroups(settings, CatalogIds)
+            .Select(group => new TileViewGroup(group.CategoryId, group.Name,
+                group.TileIds.Where(byId.ContainsKey).Select(id => byId[id]).ToArray()))
+            .Where(group => group.Tiles.Count > 0).ToArray();
+    }
 
     public void ApplyOrder(IEnumerable<string> ids)
     {
@@ -64,7 +92,7 @@ public sealed class FlyoutViewModel : ObservableObject
 
     private static List<IQuickAction> OrderAndFilter(IReadOnlyList<IQuickAction> actions, AppSettings settings)
     {
-        var hidden = new HashSet<string>(settings.HiddenTiles, StringComparer.Ordinal);
+        var hidden = settings.HiddenTiles.Concat(settings.DisabledModules).ToHashSet(StringComparer.Ordinal);
         var byId = actions.ToDictionary(a => a.Id, StringComparer.Ordinal);
         var result = new List<IQuickAction>(actions.Count);
 
@@ -80,3 +108,5 @@ public sealed class FlyoutViewModel : ObservableObject
         return result;
     }
 }
+
+public sealed record TileViewGroup(string? CategoryId, string Name, IReadOnlyList<TileViewModel> Tiles);

@@ -116,6 +116,40 @@ public sealed class DisplayOrientationService : IAsyncDisposable
         if (_recovery is { } recovery) await RevertCoreAsync(recovery, reportSuccess: true).ConfigureAwait(false);
     }, cancellationToken);
 
+    /// <summary>
+    /// Resolve only a failed operation's recovery before unloading. Successful saved orientations
+    /// and their rotation-lock choice remain in Windows; transient failures retain the snapshot.
+    /// </summary>
+    public async Task<bool> TryDeactivateAsync()
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_disposed) return _recovery is null;
+            _busy = true;
+            _messageKey = null;
+            Notify();
+            if (_recovery is { } recovery)
+                await RevertCoreAsync(recovery, reportSuccess: true).ConfigureAwait(false);
+            return _recovery is null;
+        }
+        catch (Exception ex)
+        {
+            _messageKey ??= ex is DisplayOrientationException known ? known.MessageKey : "Display configuration unavailable";
+            Diagnostics.Log.Warn($"Rotation deactivation recovery failed: {ex.Message}");
+            // A foreign change invalidates ownership; never overwrite that change. Only a
+            // still-owned recovery snapshot prevents the module from unloading.
+            return _recovery is null;
+        }
+        finally
+        {
+            if (!_disposed) CaptureSafely();
+            _busy = false;
+            _gate.Release();
+            if (!_disposed) Notify();
+        }
+    }
+
     private async Task RevertCoreAsync(Recovery recovery, bool reportSuccess)
     {
         var current = _backend.Capture();
