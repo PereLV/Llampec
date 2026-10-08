@@ -3,7 +3,9 @@
 // gesture CID preference, control reporting, DPI and SmartShift function selection.
 // Protocol formats: Logitech x1b04, x2201, x2110 and x2121 documents at
 // https://lekensteyn.nl/files/logitech/ ; 0x2111 and 0x2150 wire descriptions at
-// https://openlogi.org/hidpp/features/ . See the repository third-party notices.
+// https://openlogi.org/hidpp/features/ ; 0x1000/0x1004 battery byte layouts as described by
+// Solaar (lib/logitech_receiver/hidpp20.py, common.py), used as a wire-format reference only.
+// See the repository third-party notices.
 
 using System.Collections.ObjectModel;
 using System.Text;
@@ -47,12 +49,16 @@ public sealed class LogitechDevice : IAsyncDisposable
     public byte? VerticalWheelMode { get; private set; }
     public bool VerticalWheelCanInvert { get; private set; }
     public LogitechThumbWheelState? HorizontalWheelState { get; private set; }
+    public LogitechBattery? Battery { get; private set; }
+
+    /// <summary>Raised on the HID reader task when the device reports a battery change.</summary>
+    public event Action? BatteryChanged;
 
     public static async Task<LogitechDevice> CreateAsync(HidppClient client, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(client);
         var device = new LogitechDevice(client);
-        foreach (ushort id in new ushort[] { 0x0003, 0x0005, 0x1B04, 0x2201, 0x2110, 0x2111, 0x2121, 0x2150 })
+        foreach (ushort id in new ushort[] { 0x0003, 0x0005, 0x1000, 0x1004, 0x1B04, 0x2201, 0x2110, 0x2111, 0x2121, 0x2150 })
         {
             var index = await client.FindFeatureAsync(id, ct).ConfigureAwait(false);
             if (index is > 0) device._features.Add(id, index.Value);
@@ -72,8 +78,48 @@ public sealed class LogitechDevice : IAsyncDisposable
         }
         if (device._features.ContainsKey(0x2150))
             device.HorizontalWheelState = await device.ReadHorizontalAsync(ct).ConfigureAwait(false);
+        await device.ReadBatteryAsync(ct).ConfigureAwait(false);
         client.NotificationReceived += device.OnNotification;
         return device;
+    }
+
+    private async Task ReadBatteryAsync(CancellationToken ct)
+    {
+        // Read once; afterwards the device reports changes as event 0 of the same feature.
+        try
+        {
+            if (_features.ContainsKey(0x1004))
+                Battery = ParseUnifiedBattery(await RequestAsync(0x1004, 1, [], ct).ConfigureAwait(false));
+            else if (_features.ContainsKey(0x1000))
+                Battery = ParseBatteryStatus(await RequestAsync(0x1000, 0, [], ct).ConfigureAwait(false));
+        }
+        catch (Exception error) when (error is HidppException or InvalidDataException)
+        {
+            // Battery is informational; it must not hide the configurable capabilities.
+        }
+    }
+
+    /// <summary>
+    /// Logitech x1004 getStatus/event: state of charge, level flags (1 critical, 2 low, 4 good,
+    /// 8 full), then the same charging status as x1000.
+    /// </summary>
+    internal static LogitechBattery ParseUnifiedBattery(byte[] p)
+    {
+        RequireLength(p, 3);
+        string? level = (p[1] & 8) != 0 ? "full" : (p[1] & 4) != 0 ? "good" : (p[1] & 2) != 0 ? "low"
+            : (p[1] & 1) != 0 ? "critical" : null;
+        int? percent = p[0] is > 0 and <= 100 ? p[0] : null;
+        return new(percent, percent is null ? level : null, p[2] is 1 or 2 or 4, p[2] == 3);
+    }
+
+    /// <summary>
+    /// Logitech x1000 getBatteryLevelStatus/event: level, next level, status (0 discharging,
+    /// 1 recharging, 2 final charging stage, 3 complete, 4 slow recharging).
+    /// </summary>
+    internal static LogitechBattery ParseBatteryStatus(byte[] p)
+    {
+        RequireLength(p, 3);
+        return new(p[0] is > 0 and <= 100 ? p[0] : null, null, p[2] is 1 or 2 or 4, p[2] == 3);
     }
 
     private async Task ReadUnitIdAsync(CancellationToken ct)
@@ -479,8 +525,9 @@ public sealed class LogitechDevice : IAsyncDisposable
 
     private void OnNotification(HidppNotification notification)
     {
-        if (notification.DeviceIndex != DeviceIndex || notification.Function != 0
-            || !_features.TryGetValue(0x1B04, out byte feature) || notification.FeatureIndex != feature) return;
+        if (notification.DeviceIndex != DeviceIndex || notification.Function != 0) return;
+        if (OnBatteryNotification(notification)) return;
+        if (!_features.TryGetValue(0x1B04, out byte feature) || notification.FeatureIndex != feature) return;
         var pressedControls = new HashSet<ushort>();
         for (int i = 0; i + 1 < Math.Min(8, notification.Parameters.Length); i += 2)
         {
@@ -502,6 +549,24 @@ public sealed class LogitechDevice : IAsyncDisposable
         // User callbacks must remain short; an exception must never kill the HID reader.
         foreach (var (callback, down) in callbacks)
             try { callback(down); } catch { }
+    }
+
+    private bool OnBatteryNotification(HidppNotification notification)
+    {
+        LogitechBattery? battery;
+        try
+        {
+            if (_features.TryGetValue(0x1004, out byte unified) && notification.FeatureIndex == unified)
+                battery = ParseUnifiedBattery(notification.Parameters);
+            else if (_features.TryGetValue(0x1000, out byte status) && notification.FeatureIndex == status)
+                battery = ParseBatteryStatus(notification.Parameters);
+            else return false;
+        }
+        catch (InvalidDataException) { return true; }
+        if (battery == Battery) return true;
+        Battery = battery;
+        try { BatteryChanged?.Invoke(); } catch { }
+        return true;
     }
 
     private void ReleaseButtonCallbacks(ushort? cid = null)

@@ -1,12 +1,22 @@
 # Logitech MX integration
 
-Llampec can manage a selected Logitech HID++ mouse from **Settings → Logitech MX mouse**.
-The feature is optional and disabled by default. The initial hardware target is
+Llampec can manage a selected Logitech HID++ mouse from the **MX mouse** panel button.
+The mouse settings are optional and disabled by default. The initial hardware target is
 MX Master 3S over Bluetooth, with native Windows ARM64 and x64 builds.
+
+The button's switch turns the saved mouse settings on or off; it is unavailable until
+a mouse has been selected in its options. While connected, its caption shows the
+battery the mouse reports (HID++ 0x1004, or 0x1000 on older mice). Llampec reads it
+once on connection and then follows the mouse's own battery events, without polling.
+Enabling the settings with no customization only connects to read the battery.
+
+Removing the button in the panel editor restores the settings Llampec changed and
+releases the service and its HID reader. If restoration fails, for example because
+the mouse is off, the button stays enabled and the editor reports the error.
 
 ## Configure
 
-1. Open Logitech MX settings and scan for devices. Select the intended mouse.
+1. Open the **MX mouse** button's options and scan for devices. Select the intended mouse.
 2. Enable the feature and assign shortcuts to the buttons the device advertises
    as divertable. An empty assignment keeps its original behavior. A useful first
    assignment is **thumb button → Win+Tab**.
@@ -54,7 +64,7 @@ is reported by Windows device notifications, so further retries wait 5 minutes
 only to cover a missed notification. A present device that does not answer, such
 as a receiver whose mouse is switched off, keeps 15-second retries because Windows
 gives no notice when the mouse wakes. A healthy connected
-session waits for input without periodic HID queries, battery polling or keep-alive.
+session waits for input and battery events without periodic HID queries, battery polling or keep-alive.
 Suspension stops input dispatch; resuming establishes a fresh session. No kernel
 driver, Python/Qt runtime or separate background process is installed.
 

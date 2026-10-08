@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+- Add a **Power** module. Tapping it cycles the power mode for the current power
+  source. Its options choose the power plan (when Windows offers more than one) and
+  the lid and power-button actions on battery and plugged in. They also show charge
+  rate and battery capacity compared with its design capacity. State is read when
+  the panel opens.
+- Add an **MX mouse** module. The Logitech settings move from Settings into this
+  button's options. The switch turns them on or off and the caption shows the battery
+  the mouse reports (HID++ 0x1004/0x1000), read on connection and then updated by
+  the mouse's own events. Removing the button restores the mouse and unloads the
+  service; if restoration fails, the button stays.
+- Add a **Camera** module that lights up while a camera is capturing and names the
+  camera and app, using Windows' documented sensor activity monitor only while the
+  panel is visible. Pressing it opens Windows camera settings.
+- Power options show whether energy saver is on and the battery level that turns it
+  on, with a link to its Windows settings.
+- New modules are enabled for existing settings and appear under No category.
+  Remove any of them with the panel editor.
+- Efficiency review before the first beta:
+  - Always on Top and Fullscreen read a window's process name with one limited
+    query instead of `Process.GetProcessById(...).ProcessName`, which snapshots every
+    process (7.3 ms and 6 KB per call with 305 processes, against about 1 µs). This
+    removes roughly 20–25 ms of work from every window switch and, with 11 open
+    windows, an estimated 150–250 ms of UI-thread work from each panel open/close.
+  - Hidden and idle, Fullscreen only remembers the last app on window switches
+    instead of refreshing its whole state.
+  - The Power tile reads only status, plan and mode; the options page reads the rest.
+  - Reference only the Windows App SDK WinUI and Foundation packages: the published
+    ARM64 build drops from 156 MB to 116 MB (x64: 108 MB), without AI, ML, Search or
+    Widgets binaries.
+  - Publish ReadyToRun with non-concurrent GC and without dynamic PGO. ARM64 Release
+    startup went from 1.43 to 1.00 s and the first panel preparation from 207 to
+    165 ms; idle memory after use dropped from 7.4 to 6.9 MB.
+  - The "Panel prepared" diagnostic now includes target-window capture.
+
 ## 0.2.0-alpha.8 — 2026-10-06
 
 - Simplify the panel editor to look like the finished panel: each group is a block,

@@ -238,7 +238,9 @@ public sealed class FullscreenService : IDisposable
     {
         if (_disposed || _mutating) return;
         if (_context is not null && Environment.CurrentManagedThreadId != _ownerThread)
-        { _context.Post(_ => Refresh(), null); return; }
+        { _context.Post(_ => OnWindowChanged(), null); return; }
+        // Hidden and idle, only the last external app matters; opening the panel refreshes everything.
+        if (!_frozen && _active is null) { RememberForeground(); return; }
         Refresh();
     }
 

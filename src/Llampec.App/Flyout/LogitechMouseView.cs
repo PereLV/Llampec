@@ -415,6 +415,8 @@ public sealed class LogitechMouseView : StackPanel, IDisposable
             LogitechMouseConnectionState.Error => T("Mouse settings could not be applied."),
             _ => T("Waiting for the saved mouse. Settings will resume when it reconnects."),
         };
+        if (status.Battery is { } battery)
+            message += "\n" + UiText.Format("Battery: {0}", Llampec.Actions.Mouse.MouseAction.BatteryText(battery));
         if (status.Error is { Length: > 0 } error) message += "\n" + T(error);
         if (status.RecoveryPending) message += "\n" + T("Restoration is pending. Reconnect the same mouse before changing devices.");
         _status.Text = message;

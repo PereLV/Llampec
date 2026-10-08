@@ -182,6 +182,10 @@ public sealed class LogitechMouseService : IAsyncDisposable
                         if (retry.Version != _retryVersion || Volatile.Read(ref _stopping) != 0 || _suspended) break;
                         await RunOperationAsync(ct => ReconcileAsync(reopen: false, ct)).ConfigureAwait(false);
                         break;
+                    case BatteryUpdate battery:
+                        if (battery.Generation == Volatile.Read(ref _sessionGeneration) && _session is not null && Status.Connected)
+                            SetStatus(LogitechMouseConnectionState.Connected, Status.Device, Status.Error);
+                        break;
                     case InputFailure failure:
                         if (failure.Epoch == Volatile.Read(ref _inputEpoch) && Status.Connected)
                             SetStatus(LogitechMouseConnectionState.Connected, Status.Device, failure.Error.Message);
@@ -264,6 +268,7 @@ public sealed class LogitechMouseService : IAsyncDisposable
             if (!_settings.Identity().Matches(_session.Device)) throw new InvalidDataException("The selected mouse identity changed; select the intended mouse again.");
             long generation = Interlocked.Increment(ref _sessionGeneration);
             _session.ConnectionLost += error => OnConnectionLost(generation, error);
+            _session.BatteryChanged += () => _commands.Writer.TryWrite(new BatteryUpdate(generation));
             if (_session.ConnectionError is { } initialError) throw new IOException("The mouse disconnected during discovery.", initialError);
             var snapshot = await _session.CaptureAsync(_settings, ct).ConfigureAwait(false);
             var journal = new LogitechRecoveryJournal(1,
@@ -429,7 +434,10 @@ public sealed class LogitechMouseService : IAsyncDisposable
     private void SetStatus(LogitechMouseConnectionState state, LogitechMouseDevice? device, string? error)
     {
         Volatile.Write(ref _status, new(state, device, error,
-            state != LogitechMouseConnectionState.Connected && (_journal is not null || _journalLoadFailed)));
+            state != LogitechMouseConnectionState.Connected && (_journal is not null || _journalLoadFailed))
+        {
+            Battery = state == LogitechMouseConnectionState.Connected ? _session?.Battery : null,
+        });
         var handlers = Changed;
         if (handlers is null) return;
         foreach (EventHandler handler in handlers.GetInvocationList())
@@ -450,6 +458,7 @@ public sealed class LogitechMouseService : IAsyncDisposable
     private sealed record Lost(long Generation, Exception Error) : Command;
     private sealed record Retry(long Version) : Command;
     private sealed record InputFailure(long Epoch, Exception Error) : Command;
+    private sealed record BatteryUpdate(long Generation) : Command;
     private sealed record Shortcut(long Epoch, string Text, long Timestamp);
     private sealed record Stop(TaskCompletionSource Completion) : Command;
     private enum WakeReason { DeviceChange, Suspend, Resume }

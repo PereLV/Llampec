@@ -68,6 +68,16 @@ public partial class App
                 action.Changed += OnTouchTaskbarChanged;
                 break;
             case "screenshot": action = new Actions.Screenshot.ScreenshotAction(); break;
+            case "power": action = new Actions.Power.PowerAction(); break;
+            case "mouse":
+                LogitechMouse = new Devices.Logitech.LogitechMouseService(SendLogitechShortcut);
+                action = _mouseAction = new Actions.Mouse.MouseAction(LogitechMouse, () => Settings.Logitech, SetLogitechEnabledAsync);
+                _ = StartLogitechMouseAsync();
+                break;
+            case "camera":
+                action = _cameraAction = new Actions.Camera.CameraAction();
+                if (_window?.AppWindow.IsVisible == true) _cameraAction.SetObserving(true);
+                break;
             default: throw new ArgumentException("Unknown module.", nameof(id));
         }
         _actions.Add(id, action);
@@ -115,8 +125,31 @@ public partial class App
             "always-on-top" => AlwaysOnTop?.TryDeactivate() != false,
             "fullscreen" => Fullscreen?.TryDeactivate() != false,
             "rotation" => Rotation is null || await Rotation.TryDeactivateAsync(),
+            "mouse" => await ReleaseLogitechMouseAsync(),
             _ => true
         };
+    }
+
+    /// <summary>
+    /// Restores the mouse's original settings before its module is removed. A failed
+    /// restoration reapplies the saved preferences and keeps the module enabled.
+    /// </summary>
+    private async Task<bool> ReleaseLogitechMouseAsync()
+    {
+        if (LogitechMouse is not { } mouse) return true;
+        var released = Settings.Logitech.Clone();
+        released.Enabled = false;
+        try { await mouse.ApplyAsync(released); }
+        catch (Exception error) { Log.Warn($"Logitech mouse could not be released: {error.Message}"); }
+        if (!mouse.Status.RecoveryPending) return true;
+        await RestoreLogitechMouseAsync();
+        return false;
+    }
+
+    private async Task RestoreLogitechMouseAsync()
+    {
+        try { if (!_exiting && LogitechMouse is { } mouse) await mouse.ApplyAsync(Settings.Logitech); }
+        catch (Exception error) { Log.Warn($"Logitech mouse settings could not be reapplied: {error.Message}"); }
     }
 
     private async Task RemoveModuleAsync(string id)
@@ -159,6 +192,16 @@ public partial class App
                 }
                 break;
             case "caffeine": _caffeine?.Dispose(); _caffeine = null; break;
+            case "mouse":
+                _mouseAction?.Dispose(); _mouseAction = null;
+                if (LogitechMouse is { } mouse)
+                {
+                    LogitechMouse = null;
+                    try { await mouse.DisposeAsync(); }
+                    catch (Exception error) { Log.Error("Logitech service could not stop cleanly; recovery is retained.", error); }
+                }
+                break;
+            case "camera": _cameraAction?.Dispose(); _cameraAction = null; break;
             case "touch-taskbar":
                 if (action is not null) action.Changed -= OnTouchTaskbarChanged;
                 break;
@@ -174,6 +217,7 @@ public partial class App
         bool startThemeSchedule = false;
         bool retryPinShortcut = false;
         bool retryFullscreenShortcut = false;
+        bool mouseReleased = false;
         try
         {
             ModuleChangeError = null;
@@ -190,6 +234,7 @@ public partial class App
                     ModuleChangeError = "Could not restore an active tool. Its module remains enabled; try again.";
                     return false;
                 }
+                mouseReleased |= id == "mouse";
                 if (_exiting) return false;
             }
             var previous = new PanelLayoutDraft(Settings, ModuleCatalog.All.Select(module => module.Id));
@@ -242,6 +287,7 @@ public partial class App
         }
         finally
         {
+            if (mouseReleased && !committed) await RestoreLogitechMouseAsync();
             try
             {
                 foreach (string id in added)
@@ -263,6 +309,6 @@ public partial class App
     [System.Diagnostics.Conditional("DEBUG")]
     private void LogModuleRuntime() => Log.Info($"Module runtime: active=[{string.Join(',', _actions.Keys)}]; "
         + $"pins={AlwaysOnTop is not null}; fullscreen={Fullscreen is not null}; rotation={Rotation is not null}; "
-        + $"caffeine={_caffeine is not null}; scheduler={Scheduler is not null}; fullscreenTimer={_fullscreenTimer is not null}; "
+        + $"caffeine={_caffeine is not null}; mouse={LogitechMouse is not null}; camera={_cameraAction is not null}; scheduler={Scheduler is not null}; fullscreenTimer={_fullscreenTimer is not null}; "
         + $"pinShortcut={_alwaysOnTopHotkey?.RegisteredId ?? 0}; fullscreenShortcut={_fullscreenHotkey?.RegisteredId ?? 0}.");
 }

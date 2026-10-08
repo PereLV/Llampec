@@ -69,9 +69,7 @@ internal sealed class NativeFullscreenWindowSystem : IFullscreenWindowSystem
         string title = ReadWindowTitle(handle);
         var className = new StringBuilder(256);
         GetClassName(handle, className, className.Capacity);
-        string processName;
-        try { using var app = Process.GetProcessById((int)process); processName = app.ProcessName; }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception) { return null; }
+        if (Platform.ProcessImage.Name(process) is not { } processName) return null;
         bool shell = IsShellSurface(className.ToString(), processName);
         bool visible = IsWindowVisible(handle), minimized = IsIconic(handle);
         uint style, extendedStyle;

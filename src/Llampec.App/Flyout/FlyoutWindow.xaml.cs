@@ -33,6 +33,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
     private AlwaysOnTopView? _alwaysOnTopView;
     private FullscreenView? _fullscreenView;
     private RotationView? _rotationView;
+    private PowerView? _powerView;
     private int _observedPinCount;
     private bool _observedFullscreenActive;
     private bool _closing;
@@ -227,7 +228,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
             caption.Children.Add(pinnedCount);
         }
-        if (tile.Id == "fullscreen")
+        if (tile.Id is "fullscreen" or "camera" or "power" or "mouse")
         {
             subtitle.MaxLines = 2;
             subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -328,6 +329,16 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             {
                 _rotationView = new RotationView(rotation, hold => _dialogOpen = hold);
                 Subpage.Children.Add(_rotationView);
+            }
+            if (page.Action is Llampec.Actions.Power.PowerAction power)
+            {
+                _powerView = new PowerView(power);
+                Subpage.Children.Add(_powerView);
+            }
+            if (page.Id == "mouse")
+            {
+                _logitechMouseView = new LogitechMouseView(App.Current.LogitechMouse, Reposition);
+                Subpage.Children.Add(_logitechMouseView);
             }
             foreach (var tile in page.SubTiles)
             {
@@ -479,9 +490,9 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         bool fresh = !AppWindow.IsVisible;
         _panelHidden?.TrySetCanceled();
         _panelHidden = null;
+        long started = Stopwatch.GetTimestamp();
         App.Current.AlwaysOnTop?.CaptureTarget();
         App.Current.Fullscreen?.CaptureTarget();
-        long started = Stopwatch.GetTimestamp();
         _idleTimer.Stop();
         _closing = false;
         if (fresh)
@@ -492,6 +503,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
             ApplyTheme();
             if (Tiles.Children.Count == 0 && _layoutDraft is null) BuildTiles();
             _panelBackdrop.Resume();
+            App.Current.SetPanelVisible(true);
             if (_layoutDraft is not null) ShowPanelEditor(); else ShowMainPage();
             try { _model.RefreshAll(); }
             catch (Exception ex)
@@ -536,6 +548,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         App.Current.AlwaysOnTop?.ReleaseTarget();
         App.Current.Fullscreen?.ReleaseTarget();
         App.Current.Scheduler?.SetStatusVisible(false);
+        App.Current.SetPanelVisible(false);
         _closing = false;
         _transitioning = false;
         ShowMainPage();
@@ -698,6 +711,7 @@ public sealed partial class FlyoutWindow : Window, IDisposable
         _alwaysOnTopView?.Dispose();
         _fullscreenView?.Dispose();
         _rotationView?.Dispose();
+        _powerView?.Dispose();
         _logitechMouseView?.Dispose();
         foreach (var unsubscribe in _unsubscribe.Concat(_subUnsubscribe)) unsubscribe();
         _model.PropertyChanged -= OnModelChanged;

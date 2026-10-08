@@ -1,7 +1,9 @@
 # Architecture
 
 Llampec is an unpackaged .NET 10 application for Windows 11 24H2+, using WinUI 3
-and Windows App SDK 2.4.0. The app is published for ARM64 and x64 with Windows App
+and the Windows App SDK WinUI 2.3 and Foundation 2.3 component packages (not the
+metapackage, whose AI, ML, Search and Widgets binaries Llampec never uses). The app is
+published ReadyToRun for ARM64 and x64 with Windows App
 SDK files included and a separate .NET Runtime requirement.
 
 ## Components
@@ -18,21 +20,25 @@ SDK files included and a separate .NET Runtime requirement.
   taskbar preferences remain unchanged; foreground changes restore the window
   when another app is selected. See [fullscreen behavior](FULLSCREEN.md).
 - `Llampec.Core.Tests`: deterministic logic tests and Windows integration tests.
-- The optional Logitech mouse service lives in Core and is owned by `App`, separate
-  from disposable settings controls. A single HID reader routes notifications;
-  Windows device/power events and read failures trigger reconnection. Settings
-  changes use a durable original-state record before touching hardware. See
-  [Logitech lifecycle](LOGITECH.md).
+- The optional Logitech mouse service lives in Core and is owned by the `mouse`
+  module in `App`, separate from disposable settings controls. A single HID reader
+  routes notifications, including battery events; Windows device/power events and
+  read failures trigger reconnection. Settings changes use a durable original-state
+  record before touching hardware. See [Logitech lifecycle](LOGITECH.md).
+- The camera module observes Windows' Media Foundation sensor activity monitor only
+  while the panel is visible. The power module reads its state when the panel opens.
+  See [camera](CAMERA.md) and [power](POWER.md).
 
-`ModuleCatalog` supplies static id/title/icon/subpage metadata for all eleven tile
+`ModuleCatalog` supplies static id/title/icon/subpage metadata for all fourteen tile
 modules, including disabled ones, without constructing services. Preferences retain
 order, membership and visibility by stable identifier. `App.Modules` constructs
 only enabled actions and owns the dynamic lifetime of their services and shortcuts.
 Stateful enabled services such as caffeine and theme scheduling live outside page
 controls, so hiding the panel does not stop them. The catalogue comprises HDR,
 display power, theme, projection, taskbar, touch taskbar, caffeine, Always on Top,
-rotation, screenshot and fullscreen. Logitech remains an independent settings
-page and background service, separate from these tile-module choices.
+rotation, screenshot, fullscreen, power, MX mouse and camera. Removing the MX mouse
+module first restores the mouse's original settings; if that fails, the module
+stays enabled. Then its Logitech service and HID reader are released.
 
 `DisabledModules` means explicit module unloading; old `HiddenTiles` means only
 button visibility and does not silently disable a service on migration. Applying

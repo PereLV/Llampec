@@ -29,6 +29,8 @@ public partial class App : Application
     private AlwaysOnTopAction? _alwaysOnTopAction;
     private FullscreenAction? _fullscreenAction;
     private RotationAction? _rotationAction;
+    private Actions.Mouse.MouseAction? _mouseAction;
+    private Actions.Camera.CameraAction? _cameraAction;
     private ConfigurableHotkey? _alwaysOnTopHotkey;
     private ConfigurableHotkey? _fullscreenHotkey;
     private DispatcherQueueTimer? _fullscreenTimer;
@@ -124,21 +126,17 @@ public partial class App : Application
             _events.DisplayChanged += (_, _) => QueueEnvironmentRefresh();
             _events.Resumed += (_, _) => QueueEnvironmentRefresh();
             _events.TaskbarCreated += (_, _) => QueueEnvironmentRefresh();
-            LogitechMouse = new LogitechMouseService(shortcut =>
-            {
-                if (new KeyboardShortcut(shortcut).Send())
-                    Log.Info($"Logitech shortcut executed: {shortcut}");
-            });
-            _events.Suspending += (_, _) => LogitechMouse.Suspend();
-            _events.Resumed += (_, _) => LogitechMouse.Resume();
+            // The mouse module owns the Logitech service; these handlers do nothing while it is removed.
+            _events.Suspending += (_, _) => LogitechMouse?.Suspend();
+            _events.Resumed += (_, _) => LogitechMouse?.Resume();
             _events.SessionEnding += (_, _) => ExitApplication();
             _events.HidDeviceChanged += (_, path) =>
             {
-                if (LogitechMouse.Status.RecoveryPending || (path is null && !LogitechMouse.Status.Connected)
+                if (LogitechMouse is not { } mouse) return;
+                if (mouse.Status.RecoveryPending || (path is null && !mouse.Status.Connected)
                     || string.Equals(path, Settings.Logitech.DevicePath, StringComparison.OrdinalIgnoreCase))
-                    LogitechMouse.NotifyDeviceChange();
+                    mouse.NotifyDeviceChange();
             };
-            _ = StartLogitechMouseAsync();
             ConfigureFullscreenTimer();
             if (Scheduler is not null)
                 window.DispatcherQueue.TryEnqueue(() => _ = Scheduler?.ApplyAsync());
@@ -221,6 +219,22 @@ public partial class App : Application
     public bool IsPointerPressOnTrayIcon() => _tray?.IsPointerOverIcon() == true
         && (Llampec.Interop.User32.GetAsyncKeyState(0x01) < 0 || Llampec.Interop.User32.GetAsyncKeyState(0x02) < 0);
     public void SaveSettings() => SettingsStore.Save(Settings);
+
+    /// <summary>Starts camera observation while the panel is visible and stops it when hidden.</summary>
+    public void SetPanelVisible(bool visible) => _cameraAction?.SetObserving(visible && !_exiting);
+
+    private void SendLogitechShortcut(string shortcut)
+    {
+        if (new KeyboardShortcut(shortcut).Send())
+            Log.Info($"Logitech shortcut executed: {shortcut}");
+    }
+
+    private Task<bool> SetLogitechEnabledAsync(bool enabled)
+    {
+        var next = Settings.Logitech.Clone();
+        next.Enabled = enabled;
+        return TryApplyLogitechSettingsAsync(next);
+    }
 
     private async Task StartLogitechMouseAsync()
     {
@@ -323,6 +337,8 @@ public partial class App : Application
         _rotationAction?.Dispose();
         try { LogitechMouse?.StopAsync().GetAwaiter().GetResult(); }
         catch (Exception ex) { Log.Error("Logitech shutdown could not complete restoration; recovery is retained for the next launch.", ex); }
+        _mouseAction?.Dispose();
+        _cameraAction?.Dispose();
         Scheduler?.Dispose();
         _alwaysOnTopHotkey?.Dispose();
         _alwaysOnTopAction?.Dispose();

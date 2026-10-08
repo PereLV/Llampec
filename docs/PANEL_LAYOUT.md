@@ -100,8 +100,8 @@ application, and caffeine disposal releases its power request.
 use the existing per-user settings JSON. Null collections and malformed ids are
 normalized; old settings keep three columns and their saved layout. Applying a
 draft copies only these panel preferences and shares no mutable lists with it.
-Shared tray and `SystemEvents` integration stay alive, and the independent Logitech
-service is unaffected by tile-module choices.
+Shared tray and `SystemEvents` integration stay alive. The Logitech service belongs
+to the MX mouse module: removing it restores the mouse and releases the service.
 
 ## Taskbar clearance
 

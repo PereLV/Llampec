@@ -28,6 +28,11 @@ public sealed record LogitechSmartShiftState(ushort FeatureId, byte Mode, byte T
 
 public sealed record LogitechThumbWheelState(byte ReportingMode, bool Inverted);
 
+/// <summary>Battery from HID++ 0x1004 (unified battery) or 0x1000 (battery status).</summary>
+/// <param name="Percent">Null when the device reports only an approximate level.</param>
+/// <param name="Level">Approximate level: critical, low, good or full; null with an exact percentage only.</param>
+public sealed record LogitechBattery(int? Percent, string? Level, bool Charging, bool Full);
+
 /// <summary>Only the temporary diversion bit is owned; mapping and other flags are preserved.</summary>
 public sealed record LogitechControlRestoreState(ushort Id, bool Diverted);
 

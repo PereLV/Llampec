@@ -29,6 +29,10 @@ router and shortcut emitter are new C# implementations using protocol and Window
 documentation. Llampec does not incorporate Mouser's Python/Qt runtime,
 interface, global mouse hooks or profile engine.
 
+The battery byte layouts for HID++ features 0x1000 and 0x1004 were checked against
+[Solaar](https://github.com/pwr-Solaar/Solaar)'s protocol descriptions. Solaar is
+used only as a wire-format reference; no Solaar code is included.
+
 The packaging script includes these documents and the original license. Both
 Llampec and the standalone Logitech probe also copy the notice into their
 build/publish output.

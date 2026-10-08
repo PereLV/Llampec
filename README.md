@@ -22,7 +22,7 @@ CPU use:
   ordinary desktop activity its background CPU use dropped from about 1 s per
   20 s to none in local measurements.
 
-Llampec lives in the notification area and provides eleven configurable quick actions:
+Llampec lives in the notification area and provides fourteen configurable quick actions:
 
 - **HDR:** switch all compatible displays or control each display separately.
 - **Display power:** turn off the displays.
@@ -48,15 +48,24 @@ Llampec lives in the notification area and provides eleven configurable quick ac
   window restores the original state. Mouse-edge reveal uses the taskbar available
   on that monitor; Windows handles the native touch gesture.
   See [fullscreen behavior and validation](docs/FULLSCREEN.md).
+- **Power:** tap to cycle the power mode (best efficiency, balanced, best performance)
+  for the current power source. Its options also choose the power plan when Windows
+  offers more than one, set the lid and power-button actions on battery and plugged
+  in, and show battery charge rate and capacity. See [power](docs/POWER.md).
+- **MX mouse:** turn the Logitech MX mouse settings on or off and see the battery
+  the mouse reports. Its options hold the button, DPI and wheel configuration.
+- **Camera:** lights up while a camera is capturing and names the camera and the app
+  using it. Pressing it opens Windows camera settings. See [camera](docs/CAMERA.md).
 
 The pencil at the bottom of the panel (or **Settings → Buttons and categories**)
 opens the visual editor. The panel uses **1–6 columns** (default **3**) and adapts
 its width to the monitor. See [panel layout](docs/PANEL_LAYOUT.md).
 
-Settings also includes an optional **Logitech MX** module: assign keyboard shortcuts
-to supported mouse buttons (including the thumb button), adjust sensor DPI and
-configure native wheel mode, SmartShift and scroll direction. It keeps working
-with the panel closed and reconnects to the selected mouse. See
+The **MX mouse** button's options configure a Logitech MX mouse: assign keyboard
+shortcuts to supported mouse buttons (including the thumb button), adjust sensor DPI
+and configure native wheel mode, SmartShift and scroll direction. It keeps working
+with the panel closed and reconnects to the selected mouse. Removing the button
+restores the mouse and unloads the service. See
 [Logitech setup and recovery](docs/LOGITECH.md) for scope and hardware coverage.
 
 The panel uses WinUI 3, desktop acrylic and compositor animations that respect the
@@ -101,7 +110,7 @@ so its panel is not part of the selection. Windows handles the capture selector,
 clipboard and subsequent editing or saving. Llampec does not store or upload the
 image. See [screenshot behavior](docs/SCREENSHOT.md).
 
-For Logitech MX, open **Settings → Logitech MX mouse**, find and select the mouse,
+For Logitech MX, open the **MX mouse** button's options (›), find and select the mouse,
 enable the module, then assign shortcuts and press **Apply**. DPI and wheel settings
 are optional. The selected device's advertised capabilities determine what is
 available; other mice retain their behavior. Disabling the module or exiting normally
@@ -220,6 +229,8 @@ Developer documentation:
 - [Settings and languages](docs/SETTINGS.md)
 - [Always on Top](docs/ALWAYS_ON_TOP.md)
 - [Screenshot](docs/SCREENSHOT.md)
+- [Power](docs/POWER.md)
+- [Camera](docs/CAMERA.md)
 - [Tablet controls and orientation](docs/TABLET.md)
 - [Future rotation-animation research](docs/ROTATION_ANIMATION_RESEARCH.md)
 - [Future global touch-mode research](docs/GLOBAL_TOUCH_MODE_RESEARCH.md)

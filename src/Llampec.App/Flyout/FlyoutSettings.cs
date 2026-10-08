@@ -10,7 +10,7 @@ namespace Llampec.Flyout;
 
 public sealed partial class FlyoutWindow
 {
-    private enum UtilityPage { None, Settings, Editor, Logitech }
+    private enum UtilityPage { None, Settings, Editor }
     private UtilityPage _utilityPage;
     private LogitechMouseView? _logitechMouseView;
     private static string T(string key) => UiText.Get(key);
@@ -36,6 +36,7 @@ public sealed partial class FlyoutWindow
         _fullscreenView?.Dispose(); _fullscreenView = null;
         _rotationView?.Dispose(); _rotationView = null;
         _logitechMouseView?.Dispose(); _logitechMouseView = null;
+        _powerView?.Dispose(); _powerView = null;
         Subpage.Children.Clear();
     }
 
@@ -68,7 +69,7 @@ public sealed partial class FlyoutWindow
 
     private void GoBack()
     {
-        if (_utilityPage is UtilityPage.Editor or UtilityPage.Logitech) ShowSettings();
+        if (_utilityPage == UtilityPage.Editor) ShowSettings();
         else if (_utilityPage == UtilityPage.Settings) ShowMainPage();
         else _model.CloseSubpage();
     }
@@ -147,20 +148,9 @@ public sealed partial class FlyoutWindow
         var reorder = new Button { Content = T("Buttons and categories"), HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 12, 0, 0) };
         reorder.Click += (_, _) => ShowPanelEditor();
         Subpage.Children.Add(reorder);
-        var logitech = new Button { Content = T("Logitech MX mouse"), HorizontalAlignment = HorizontalAlignment.Stretch };
-        logitech.Click += (_, _) => ShowLogitechMouse();
-        Subpage.Children.Add(logitech);
         var about = new Button { Content = T("About Llampec"), HorizontalAlignment = HorizontalAlignment.Stretch };
         about.Click += (_, _) => ShowAbout();
         Subpage.Children.Add(about);
-        Reposition();
-    }
-
-    private void ShowLogitechMouse()
-    {
-        BeginUtilityPage(UtilityPage.Logitech, "Logitech MX mouse");
-        _logitechMouseView = new LogitechMouseView(App.Current.LogitechMouse, Reposition);
-        Subpage.Children.Add(_logitechMouseView);
         Reposition();
     }
 

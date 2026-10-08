@@ -19,5 +19,8 @@ public static class ModuleCatalog
         new("rotation", "Rotation lock", "\uE755", null, true),
         new("screenshot", "Screenshot", "\uE8A7", null, false),
         new("fullscreen", "Full screen", "\uE740", null, true),
+        new("power", "Power", "\uEC4A", null, true),
+        new("mouse", "MX mouse", "\uE962", null, true),
+        new("camera", "Camera", "\uE722", null, false),
     ]);
 }

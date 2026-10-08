@@ -18,6 +18,40 @@ public class LogitechDeviceTests
         Assert.Empty(transport.Mutations);
     }
 
+    [Fact]
+    public async Task Unified_battery_is_read_once_then_follows_device_events_without_writes()
+    {
+        var transport = new FeatureDeviceTransport { UnifiedBattery = [70, 4, 0, 0] };
+        await using var client = new HidppClient(transport);
+        await using var device = await LogitechDevice.CreateAsync(client);
+        Assert.Equal(new LogitechBattery(70, null, false, false), device.Battery);
+
+        var changed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        device.BatteryChanged += () => changed.TrySetResult();
+        transport.NotifyBattery(71, 4, 1, 1);
+        await changed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(new LogitechBattery(71, null, true, false), device.Battery);
+        Assert.Single(transport.Requests, request => request.Feature == 0x1004);
+        Assert.Empty(transport.Mutations);
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0, 8, 3 }, null, "full", false, true)]
+    [InlineData(new byte[] { 0, 2, 0 }, null, "low", false, false)]
+    [InlineData(new byte[] { 55, 4, 2 }, 55, null, true, false)]
+    [InlineData(new byte[] { 55, 4, 4 }, 55, null, true, false)]
+    public void Unified_battery_reports_percentage_or_approximate_level(byte[] status, int? percent, string? level, bool charging, bool full)
+        => Assert.Equal(new LogitechBattery(percent, level, charging, full), LogitechDevice.ParseUnifiedBattery(status));
+
+    [Theory]
+    [InlineData(new byte[] { 40, 30, 0 }, 40, false, false)]
+    [InlineData(new byte[] { 90, 100, 1 }, 90, true, false)]
+    [InlineData(new byte[] { 100, 0, 3 }, 100, false, true)]
+    [InlineData(new byte[] { 0, 0, 4 }, null, true, false)]
+    public void Battery_status_feature_reports_level_and_charging(byte[] status, int? percent, bool charging, bool full)
+        => Assert.Equal(new LogitechBattery(percent, null, charging, full), LogitechDevice.ParseBatteryStatus(status));
+
     [Theory]
     [InlineData("absent")]
     [InlineData("zero")]
@@ -398,6 +432,28 @@ public class LogitechDeviceTests
 
         public void RemoveFeature(ushort feature) => _features.Remove(feature);
 
+        /// <summary>HID++ 0x1004 getStatus reply: state of charge, level flags, charging status, external power.</summary>
+        public byte[]? UnifiedBattery
+        {
+            get => _unifiedBattery;
+            set
+            {
+                _unifiedBattery = value;
+                if (value is null) _features.Remove(0x1004); else _features[0x1004] = 7;
+            }
+        }
+        private byte[]? _unifiedBattery;
+
+        public void NotifyBattery(params byte[] status)
+        {
+            byte[] report = new byte[20];
+            report[0] = 0x11;
+            report[1] = 0xFF;
+            report[2] = _features[0x1004];
+            status.CopyTo(report, 4);
+            Assert.True(_incoming.Writer.TryWrite(report));
+        }
+
         public void NotifyButtons(params ushort[] controls)
         {
             byte[] report = new byte[20];
@@ -525,6 +581,9 @@ public class LogitechDeviceTests
                     Mutations.Add(request);
                     HorizontalReportingMode = parameters[0];
                     HorizontalInverted = (parameters[1] & 1) != 0;
+                    break;
+                case (0x1004, 1):
+                    UnifiedBattery!.CopyTo(reply, 4);
                     break;
                 case (0x2111, 1):
                     reply[4] = SmartMode;

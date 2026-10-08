@@ -22,6 +22,8 @@ public sealed record LogitechMouseStatus(LogitechMouseConnectionState State, Log
     string? Error, bool RecoveryPending)
 {
     public bool Connected => State == LogitechMouseConnectionState.Connected;
+    /// <summary>Last reported battery of the connected mouse; null when unknown or disconnected.</summary>
+    public LogitechBattery? Battery { get; init; }
 }
 
 internal sealed record LogitechMouseIdentity(string Path, ushort ProductId, byte DeviceIndex, string? SerialNumber, string? UnitId = null)
@@ -46,6 +48,9 @@ internal interface ILogitechMouseSession : IAsyncDisposable
     Task<LogitechRestoreState> CaptureAsync(LogitechMouseSettings settings, CancellationToken ct);
     Task ApplyAsync(LogitechMouseSettings settings, Action<ushort, bool> button, CancellationToken ct);
     Task RestoreAsync(LogitechRestoreState state, CancellationToken ct);
+    LogitechBattery? Battery => null;
+    /// <summary>Raised on the HID reader task; handlers must queue work and return promptly.</summary>
+    event Action? BatteryChanged { add { } remove { } }
 }
 
 internal sealed class WindowsLogitechMouseBackend : ILogitechMouseBackend
@@ -144,6 +149,12 @@ internal sealed class WindowsLogitechMouseBackend : ILogitechMouseBackend
             }
         }
         public Task RestoreAsync(LogitechRestoreState state, CancellationToken ct) => _device.ApplyRestoreStateAsync(state, ct);
+        public LogitechBattery? Battery => _device.Battery;
+        public event Action? BatteryChanged
+        {
+            add => _device.BatteryChanged += value;
+            remove => _device.BatteryChanged -= value;
+        }
         public async ValueTask DisposeAsync()
         {
             // The service restores the durable snapshot explicitly. Closing input first

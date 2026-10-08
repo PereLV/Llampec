@@ -111,19 +111,9 @@ internal sealed class NativeAlwaysOnTopWindowSystem : IAlwaysOnTopWindowSystem
         return Matches(identity) ? new(identity, caption, eligible, (extendedStyle & TopmostStyle) != 0) : null;
     }
 
-    private static bool IsShellSurfaceProcess(uint processId)
-    {
-        try
-        {
-            using var process = Process.GetProcessById((int)processId);
-            return process.ProcessName is "StartMenuExperienceHost" or "ShellExperienceHost" or "SearchHost"
-                or "SearchApp" or "TextInputHost" or "LockApp" or "Widgets" or "WidgetService";
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
-        {
-            return false;
-        }
-    }
+    private static bool IsShellSurfaceProcess(uint processId) => Platform.ProcessImage.Name(processId)
+        is "StartMenuExperienceHost" or "ShellExperienceHost" or "SearchHost"
+        or "SearchApp" or "TextInputHost" or "LockApp" or "Widgets" or "WidgetService";
 
     public IReadOnlyList<WindowSnapshot> Enumerate()
     {

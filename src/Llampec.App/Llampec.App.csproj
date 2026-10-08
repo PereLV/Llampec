@@ -9,9 +9,18 @@
     <PlatformTarget Condition="'$(RuntimeIdentifier)' == 'win-arm64'">ARM64</PlatformTarget>
     <PlatformTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">x64</PlatformTarget>
     <SelfContained>false</SelfContained><PublishTrimmed>false</PublishTrimmed><PublishSingleFile>false</PublishSingleFile>
+    <!-- Measured on ARM64 Release: ReadyToRun cut startup from 1.4 to 1.0 s and the first panel
+         preparation from 207 to 165 ms. A tray app with a small heap needs neither the background
+         GC thread nor dynamic PGO instrumentation. -->
+    <PublishReadyToRun>true</PublishReadyToRun><TieredPGO>false</TieredPGO>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <!-- WinUI and Foundation only (with their Base, InteractiveExperiences and WebView2
+         dependencies). The Microsoft.WindowsAppSDK metapackage also ships AI, ML, Search,
+         Widgets and DWriteCore binaries that Llampec never loads: about 40 MB per build. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.6" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.9" />
     <ProjectReference Include="..\Llampec.Core\Llampec.Core.csproj" />
     <Using Include="System.Runtime.InteropServices" />
     <Content Include="Assets\Llampec.ico" CopyToOutputDirectory="PreserveNewest" />

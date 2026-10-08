@@ -31,6 +31,13 @@ Quick Settings should have been, with extras. Planned future areas: power option
 network settings, wireless projection, webcam handling, and launchers for the
 volume and brightness panels. These are roadmap items, not a selected next task.
 
+On 2026-10-07 the user approved one exception to documented APIs: the power mode
+uses the undocumented `powrprof.dll` overlay functions that Windows Settings uses,
+because a failure only disables the control. Night light was rejected for lacking
+an API. Llampec should add what Windows lacks or does poorly, not duplicate the
+native Quick Settings. The same day added Power, MX mouse (battery only; Easy-Switch
+declined) and a minimal Camera activity button that opens Windows camera settings.
+
 Keep the original lightweight design: no recurring work for disposable layout
 controls, no idle polling for window features and no speculative memory trimming.
 The user considers the observed roughly 18 MB idle physical memory acceptable;
