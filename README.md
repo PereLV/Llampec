@@ -1,7 +1,7 @@
 # Llampec
 
 A compact, open-source Windows 11 quick-settings panel by
-[Pere Esquerdo Ramis](https://github.com/PereLV).
+[Pere Esquerdo Ramis](https://github.com/PereEsquerdo).
 
 Llampec is growing into what the Windows 11 Quick Settings panel should have
 been — with a few extra vitamins: the controls you actually reach for, arranged
@@ -84,7 +84,7 @@ This alpha does not include an installer or code signing.
 
 ## Use
 
-Download the archive for your architecture from [Releases](https://github.com/PereLV/Llampec/releases)
+Download the archive for your architecture from [Releases](https://github.com/PereEsquerdo/Llampec/releases)
 and extract it to a permanent folder.
 
 Open `Llampec.exe`, click its notification-area icon, or press **Ctrl+Alt+Space**.
@@ -241,10 +241,10 @@ Developer documentation:
 ## Credits
 
 Llampec is designed, developed and maintained by **Pere Esquerdo Ramis**
-([@PereLV](https://github.com/PereLV)). Third-party components and references are
+([@PereEsquerdo](https://github.com/PereEsquerdo)). Third-party components and references are
 credited in [Acknowledgements](docs/ACKNOWLEDGEMENTS.md).
 
 ## License
 
 [MIT](LICENSE) · Copyright © 2026 Pere Esquerdo Ramis.
-[Source code on GitHub](https://github.com/PereLV/Llampec).
+[Source code on GitHub](https://github.com/PereEsquerdo/Llampec).

@@ -22,7 +22,7 @@ the next feature to implement.
 
 On 2026-10-05 the user requested full-name attribution: **Pere Esquerdo Ramis**
 in copyright, author metadata and the app's About page. Identify Llampec as
-open-source under MIT and link its source at https://github.com/PereLV/Llampec.
+open-source under MIT and link its source at https://github.com/PereEsquerdo/Llampec.
 This attribution was published with 0.2.0-alpha.8 on 2026-10-06; keep it in
 later releases.
 

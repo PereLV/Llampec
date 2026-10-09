@@ -7,7 +7,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild><AnalysisLevel>latest</AnalysisLevel><Deterministic>true</Deterministic>
     <Version>0.2.0-alpha.8</Version><Authors>Pere Esquerdo Ramis</Authors><Product>Llampec</Product>
     <Copyright>Copyright (c) 2026 Pere Esquerdo Ramis</Copyright>
-    <RepositoryUrl>https://github.com/PereLV/Llampec</RepositoryUrl><PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryType>git</RepositoryType><PackageProjectUrl>https://github.com/PereLV/Llampec</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/PereEsquerdo/Llampec</RepositoryUrl><PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType><PackageProjectUrl>https://github.com/PereEsquerdo/Llampec</PackageProjectUrl>
   </PropertyGroup>
 </Project>

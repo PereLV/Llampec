@@ -172,7 +172,7 @@ private async void ShowAbout()
             });
             content.Children.Add(new HyperlinkButton
             {
-                Content = T("Source code on GitHub"), NavigateUri = new Uri("https://github.com/PereLV/Llampec"),
+                Content = T("Source code on GitHub"), NavigateUri = new Uri("https://github.com/PereEsquerdo/Llampec"),
                 Padding = new Thickness(0),
             });
             content.Children.Add(new TextBlock { Text = T("Acknowledgements"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
